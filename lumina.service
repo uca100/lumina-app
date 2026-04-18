@@ -1,0 +1,17 @@
+[Unit]
+Description=Lumina — Inspiration Manager (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+User=uri
+WorkingDirectory=/usr/local/lumina
+EnvironmentFile=-/usr/local/lumina/.env.local
+Environment=NODE_ENV=production
+Environment=PORT=3009
+ExecStart=/usr/bin/node node_modules/.bin/tsx server.ts
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
