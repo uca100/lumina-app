@@ -44,6 +44,7 @@ export async function classifyItem(body: string): Promise<{
     messages: [{ role: 'user', content: body }],
   })
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  const raw = response.content[0].type === 'text' ? response.content[0].text : ''
+  const text = raw.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim()
   return JSON.parse(text)
 }
