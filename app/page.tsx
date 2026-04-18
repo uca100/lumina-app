@@ -21,6 +21,11 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [debouncedQ, setDebouncedQ] = useState('')
+  const [version, setVersion] = useState('')
+
+  useEffect(() => {
+    fetch('/lumina/api/version').then(r => r.json()).then(d => setVersion(`v${d.version}`))
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 300)
@@ -57,6 +62,7 @@ export default function FeedPage() {
             <span className="text-amber-500 text-xl">✦</span>
             <h1 className="font-serif text-2xl font-bold text-stone-800 tracking-tight">Lumina</h1>
             <span className="text-stone-300 text-sm hidden sm:block">/ your inspiration</span>
+            {version && <span className="text-[10px] text-stone-300 font-mono hidden sm:block">{version}</span>}
           </div>
           <div className="flex gap-2">
             <button

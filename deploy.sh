@@ -6,7 +6,7 @@ PI5=uri@192.168.40.99
 REMOTE_DIR=/usr/local/$APP
 
 echo "==> Building $APP..."
-npm run build
+BUILT_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ") BUILT_AT=$BUILT_AT npm run build
 
 echo "==> Preparing remote directory..."
 ssh $PI5 "sudo mkdir -p $REMOTE_DIR && sudo chown uri:uri $REMOTE_DIR"
