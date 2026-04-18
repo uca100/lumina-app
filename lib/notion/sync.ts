@@ -1,11 +1,27 @@
 import { Client } from '@notionhq/client'
 import { db } from '../db/client'
 import { items, syncMeta } from '../db/schema'
-import { eq, or, gt } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY })
 const DB_ID = process.env.NOTION_DATABASE_ID ?? ''
+const NOTION_API_KEY = process.env.NOTION_API_KEY ?? ''
+
+async function queryDatabase(filter?: object): Promise<{ results: unknown[] }> {
+  const body: Record<string, unknown> = {}
+  if (filter) body.filter = filter
+  const res = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${NOTION_API_KEY}`,
+      'Notion-Version': '2022-06-28',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  return res.json() as Promise<{ results: unknown[] }>
+}
 
 function getSyncMeta(key: string): string | null {
   const database = db()
@@ -67,12 +83,9 @@ export async function pullFromNotion() {
   const lastSync = getSyncMeta('lastPull')
   const database = db()
 
-  const response = await notion.dataSources.query({
-    data_source_id: DB_ID,
-    filter: lastSync
-      ? { property: 'last_edited_time', last_edited_time: { after: lastSync } }
-      : undefined,
-  } as Parameters<typeof notion.dataSources.query>[0])
+  const response = await queryDatabase(
+    lastSync ? { timestamp: 'last_edited_time', last_edited_time: { after: lastSync } } : undefined
+  )
   for (const page of response.results) {
     if (page.object !== 'page') continue
     const p = (page as { properties: Record<string, unknown> }).properties as Record<string, { type: string; title?: { plain_text: string }[]; rich_text?: { plain_text: string }[]; select?: { name: string }; multi_select?: { name: string }[]; date?: { start: string }; checkbox?: boolean }>
