@@ -86,9 +86,11 @@ export async function pullFromNotion() {
   const response = await queryDatabase(
     lastSync ? { timestamp: 'last_edited_time', last_edited_time: { after: lastSync } } : undefined
   )
-  for (const page of response.results) {
+  type NotionPage = { id: string; object: string; properties: Record<string, { title?: { plain_text: string }[]; rich_text?: { plain_text: string }[]; select?: { name: string }; multi_select?: { name: string }[]; date?: { start: string }; checkbox?: boolean }> }
+  for (const _page of response.results) {
+    const page = _page as NotionPage
     if (page.object !== 'page') continue
-    const p = (page as { properties: Record<string, unknown> }).properties as Record<string, { type: string; title?: { plain_text: string }[]; rich_text?: { plain_text: string }[]; select?: { name: string }; multi_select?: { name: string }[]; date?: { start: string }; checkbox?: boolean }>
+    const p = page.properties
 
     const body = p.Body?.rich_text?.map((r) => r.plain_text).join('') ?? ''
     if (!body) continue
