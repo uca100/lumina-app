@@ -49,7 +49,7 @@ export default function ItemPage() {
     if (!confirm('Delete this item?')) return
     setDeleting(true)
     await fetch(`/lumina/api/items/${id}`, { method: 'DELETE' })
-    router.push('/lumina')
+    router.push('/')
   }
 
   if (!item) return <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-400">Loading…</div>
@@ -58,7 +58,7 @@ export default function ItemPage() {
     <div className="min-h-screen bg-stone-50">
       <header className="bg-[#faf7f2] border-b border-stone-200 px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <Link href="/lumina" className="text-stone-500 hover:text-stone-700 text-sm">← Back</Link>
+          <Link href="/" className="text-stone-500 hover:text-stone-700 text-sm">← Back</Link>
           <div className="flex gap-2">
             {!editing && (
               <>

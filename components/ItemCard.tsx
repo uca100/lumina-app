@@ -26,7 +26,7 @@ export function ItemCard({ item }: { item: Item }) {
   const preview = item.body.length > 200 ? item.body.slice(0, 200) + '…' : item.body
 
   return (
-    <Link href={`/lumina/item/${item.id}`} className="block group">
+    <Link href={`/item/${item.id}`} className="block group">
       <div className="bg-[#faf7f2] border border-stone-200 rounded-2xl p-5 hover:shadow-md transition-shadow">
         <div className="flex items-start justify-between gap-3 mb-3">
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${TYPE_STYLES[item.type] ?? ''}`}>

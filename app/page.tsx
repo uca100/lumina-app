@@ -53,7 +53,7 @@ export default function FeedPage() {
               {syncing ? 'Syncing…' : 'Sync Notion'}
             </button>
             <Link
-              href="/lumina/capture"
+              href="/capture"
               className="text-sm px-4 py-1.5 bg-amber-500 text-black font-semibold rounded-full hover:bg-amber-400 transition-colors"
             >
               + Capture
@@ -88,7 +88,7 @@ export default function FeedPage() {
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-stone-400 mb-4">No inspiration yet.</p>
-            <Link href="/lumina/capture" className="text-amber-600 underline">Capture your first item</Link>
+            <Link href="/capture" className="text-amber-600 underline">Capture your first item</Link>
           </div>
         ) : (
           <div className="grid gap-4">

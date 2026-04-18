@@ -58,7 +58,7 @@ export function CaptureForm() {
         body: JSON.stringify({ body, title: title || null, type, author: author || null, tags }),
       })
       if (!res.ok) throw new Error('Save failed')
-      router.push('/lumina')
+      router.push('/')
     } catch {
       setError('Could not save. Please try again.')
       setSaving(false)
@@ -162,7 +162,7 @@ export function CaptureForm() {
 
         <div className="flex gap-3 mt-auto pt-4 border-t border-zinc-800">
           <button
-            onClick={() => router.push('/lumina')}
+            onClick={() => router.push('/')}
             className="px-6 py-2.5 rounded-xl border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
           >
             Cancel
