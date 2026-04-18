@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { classifyAndSave } from '@/lib/ingest/save'
 import { sendMessage } from '@/lib/telegram/bot'
+import { db } from '@/lib/db/client'
+import { syncMeta } from '@/lib/db/schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +18,13 @@ export async function POST(request: Request) {
   const chatId = message?.chat?.id as number | undefined
 
   if (!text || !chatId) return NextResponse.json({ ok: true })
+
+  // persist chat ID so reminders can use it
+  const now = Date.now()
+  db().insert(syncMeta)
+    .values({ id: 'telegram_chat', key: 'telegram_chat_id', value: String(chatId), updatedAt: now })
+    .onConflictDoUpdate({ target: syncMeta.key, set: { value: String(chatId), updatedAt: now } })
+    .run()
 
   // ignore commands
   if (text.startsWith('/')) {

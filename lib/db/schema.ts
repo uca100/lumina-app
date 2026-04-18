@@ -24,3 +24,15 @@ export const syncMeta = sqliteTable('sync_meta', {
   value: text('value').notNull(),
   updatedAt: integer('updated_at').notNull(),
 })
+
+export const reminderSchedules = sqliteTable('reminder_schedules', {
+  id: text('id').primaryKey(),
+  label: text('label').notNull().default(''),
+  hour: integer('hour').notNull(),
+  minute: integer('minute').notNull(),
+  typesFilter: text('types_filter').notNull().default('[]'),
+  itemId: text('item_id'),           // null = random, set = always send this item
+  enabled: integer('enabled').notNull().default(1),
+  chatId: integer('chat_id'),
+  createdAt: integer('created_at').notNull(),
+})

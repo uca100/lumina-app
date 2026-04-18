@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ItemCard, Item } from '@/components/ItemCard'
 
 const TYPES = ['', 'Quote', 'Affirmation', 'Story', 'Thought'] as const
@@ -15,11 +16,13 @@ const TYPE_ICONS: Record<string, string> = {
 }
 
 export default function FeedPage() {
+  const router = useRouter()
   const [items, setItems] = useState<Item[]>([])
   const [q, setQ] = useState('')
   const [type, setType] = useState('')
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [shuffling, setShuffling] = useState(false)
   const [debouncedQ, setDebouncedQ] = useState('')
   const [version, setVersion] = useState('')
 
@@ -44,6 +47,16 @@ export default function FeedPage() {
   }, [debouncedQ, type])
 
   useEffect(() => { fetchItems() }, [fetchItems])
+
+  async function shuffle() {
+    setShuffling(true)
+    const res = await fetch('/lumina/api/items/random')
+    if (res.ok) {
+      const item = await res.json()
+      router.push(`/item/${item.id}`)
+    }
+    setShuffling(false)
+  }
 
   async function triggerSync() {
     setSyncing(true)
@@ -71,12 +84,26 @@ export default function FeedPage() {
           </div>
           <div className="flex gap-2">
             <button
+              onClick={shuffle}
+              disabled={shuffling}
+              className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all disabled:opacity-40"
+              title="Surprise me"
+            >
+              {shuffling ? '✦' : '⇄'}
+            </button>
+            <button
               onClick={triggerSync}
               disabled={syncing}
               className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all disabled:opacity-40"
             >
               {syncing ? '⟳ Syncing…' : '⟳ Notion'}
             </button>
+            <Link
+              href="/reminders"
+              className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all"
+            >
+              ⏰
+            </Link>
             <Link
               href="/capture"
               className="text-sm px-5 py-1.5 bg-gradient-to-br from-amber-400 to-amber-600 text-black font-bold rounded-full shadow-lg shadow-amber-900/30 hover:from-amber-300 hover:to-amber-500 transition-all"

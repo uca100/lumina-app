@@ -19,6 +19,13 @@ function getDb() {
 }
 
 function ensureSchema(sqlite: Database.Database) {
+  // migrate existing reminder_schedules table if item_id column is missing
+  try {
+    sqlite.exec(`ALTER TABLE reminder_schedules ADD COLUMN item_id TEXT`)
+  } catch {
+    // column already exists — ignore
+  }
+
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS items (
       id TEXT PRIMARY KEY,
@@ -42,6 +49,18 @@ function ensureSchema(sqlite: Database.Database) {
       key TEXT NOT NULL UNIQUE,
       value TEXT NOT NULL,
       updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS reminder_schedules (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL DEFAULT '',
+      hour INTEGER NOT NULL,
+      minute INTEGER NOT NULL,
+      types_filter TEXT NOT NULL DEFAULT '[]',
+      item_id TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      chat_id INTEGER,
+      created_at INTEGER NOT NULL
     );
   `)
 }
