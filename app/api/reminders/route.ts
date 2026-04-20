@@ -20,13 +20,15 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const now = Date.now()
 
+  const mode = (body.mode === 'daily_random' ? 'daily_random' : 'fixed') as 'fixed' | 'daily_random'
   const schedule = {
     id: nanoid(),
     label: body.label ?? '',
-    hour: Number(body.hour),
-    minute: Number(body.minute),
+    hour: mode === 'daily_random' ? 0 : Number(body.hour),
+    minute: mode === 'daily_random' ? 0 : Number(body.minute),
     typesFilter: JSON.stringify(body.typesFilter ?? []),
     itemId: body.itemId ?? null,
+    mode,
     enabled: body.enabled ?? 1,
     chatId: body.chatId ?? null,
     createdAt: now,

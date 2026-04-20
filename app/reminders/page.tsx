@@ -13,6 +13,7 @@ interface Schedule {
   minute: number
   typesFilter: string[]
   itemId: string | null
+  mode: 'fixed' | 'daily_random'
   enabled: number
   chatId: number | null
   createdAt: number
@@ -34,7 +35,8 @@ export default function RemindersPage() {
   const [time, setTime] = useState('08:00')
   const [label, setLabel] = useState('')
   const [typesFilter, setTypesFilter] = useState<string[]>([])
-  const [mode, setMode] = useState<'random' | 'pick'>('random')
+  const [mode, setMode] = useState<'random' | 'pick' | 'scatter' | 'daily_random'>('random')
+  const [scatterCount, setScatterCount] = useState(3)
   const [itemSearch, setItemSearch] = useState('')
   const [itemResults, setItemResults] = useState<Item[]>([])
   const [pickedItem, setPickedItem] = useState<Item | null>(null)
@@ -61,27 +63,58 @@ export default function RemindersPage() {
     return () => clearTimeout(t)
   }, [itemSearch, mode])
 
-  async function addReminder() {
-    const [h, m] = time.split(':').map(Number)
-    setSaving(true)
-    await fetch('/lumina/api/reminders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        label,
-        hour: h,
-        minute: m,
-        typesFilter: mode === 'random' ? typesFilter : [],
-        itemId: mode === 'pick' ? pickedItem?.id ?? null : null,
-        enabled: 1,
-      }),
+  function scatterTimes(count: number): { hour: number; minute: number }[] {
+    const START = 8 * 60   // 08:00
+    const END = 22 * 60    // 22:00
+    const segment = Math.floor((END - START) / count)
+    return Array.from({ length: count }, (_, i) => {
+      const base = START + i * segment
+      const offset = Math.floor(Math.random() * segment)
+      const total = base + offset
+      return { hour: Math.floor(total / 60), minute: total % 60 }
     })
+  }
+
+  async function addReminder() {
+    setSaving(true)
+    if (mode === 'daily_random') {
+      await fetch('/lumina/api/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, hour: 0, minute: 0, typesFilter, itemId: null, mode: 'daily_random', enabled: 1 }),
+      })
+    } else if (mode === 'scatter') {
+      const times = scatterTimes(scatterCount)
+      for (const { hour, minute } of times) {
+        await fetch('/lumina/api/reminders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label, hour, minute, typesFilter, itemId: null, enabled: 1 }),
+        })
+      }
+    } else {
+      const [h, m] = time.split(':').map(Number)
+      await fetch('/lumina/api/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label,
+          hour: h,
+          minute: m,
+          typesFilter: mode === 'random' ? typesFilter : [],
+          itemId: mode === 'pick' ? pickedItem?.id ?? null : null,
+          enabled: 1,
+        }),
+      })
+    }
     setLabel('')
     setTime('08:00')
     setTypesFilter([])
     setPickedItem(null)
     setItemSearch('')
     setMode('random')
+    setScatterCount(3)
+
     await load()
     setSaving(false)
   }
@@ -156,13 +189,17 @@ export default function RemindersPage() {
             <div className="space-y-2">
               {schedules.map(s => (
                 <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all ${s.enabled ? 'border-zinc-700/60 bg-zinc-900/60' : 'border-zinc-800/40 bg-zinc-900/20 opacity-50'}`}>
-                  <span className="font-mono text-amber-400 text-lg w-16 shrink-0">{formatTime(s.hour, s.minute)}</span>
+                  <span className="font-mono text-amber-400 text-lg w-16 shrink-0">
+                    {s.mode === 'daily_random' ? '🎲' : formatTime(s.hour, s.minute)}
+                  </span>
                   <div className="flex-1 min-w-0">
                     {s.label && <p className="text-sm text-zinc-200 truncate">{s.label}</p>}
                     <p className="text-xs text-zinc-600">
-                      {s.itemId
-                        ? <span className="text-amber-500/70">pinned item</span>
-                        : s.typesFilter.length ? s.typesFilter.join(', ') : 'All types (random)'}
+                      {s.mode === 'daily_random'
+                        ? <span className="text-amber-500/70">daily random time · {s.typesFilter.length ? s.typesFilter.join(', ') : 'all types'}</span>
+                        : s.itemId
+                          ? <span className="text-amber-500/70">pinned item</span>
+                          : s.typesFilter.length ? s.typesFilter.join(', ') : 'All types (random)'}
                     </p>
                   </div>
                   <button
@@ -189,6 +226,7 @@ export default function RemindersPage() {
           <h2 className="text-xs uppercase tracking-widest text-zinc-500">Add Reminder</h2>
 
           <div className="flex gap-3 flex-wrap">
+            {mode !== 'scatter' && mode !== 'daily_random' && (
             <div className="flex flex-col gap-1">
               <label className="text-xs text-zinc-600">Time</label>
               <input
@@ -198,6 +236,7 @@ export default function RemindersPage() {
                 className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-amber-500/50"
               />
             </div>
+            )}
             <div className="flex flex-col gap-1 flex-1 min-w-40">
               <label className="text-xs text-zinc-600">Label (optional)</label>
               <input
@@ -210,9 +249,10 @@ export default function RemindersPage() {
             </div>
           </div>
 
+
           {/* Mode toggle */}
-          <div className="flex gap-2">
-            {(['random', 'pick'] as const).map(m => (
+          <div className="flex gap-2 flex-wrap">
+            {([['random', '⇄ Random item'], ['scatter', '↻ Random times/day'], ['daily_random', '🎲 Daily random'], ['pick', '✦ Pick item']] as const).map(([m, label]) => (
               <button
                 key={m}
                 type="button"
@@ -223,10 +263,69 @@ export default function RemindersPage() {
                     : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'
                 }`}
               >
-                {m === 'random' ? '⇄ Random' : '✦ Pick item'}
+                {label}
               </button>
             ))}
           </div>
+
+          {mode === 'daily_random' && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-zinc-500">Every day a random time between 08:00–22:00 will be picked. Filter by type or leave empty for all.</p>
+              <div className="flex flex-wrap gap-2">
+                {ITEM_TYPES.map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleType(t)}
+                    className={`px-3 py-1 rounded-full text-xs border transition-all ${
+                      typesFilter.includes(t)
+                        ? 'bg-amber-500 text-black border-amber-500'
+                        : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {mode === 'scatter' && (
+            <div className="flex flex-col gap-3">
+              <label className="text-xs text-zinc-600">How many times per day? (between 08:00 – 22:00)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={1}
+                  max={10}
+                  value={scatterCount}
+                  onChange={e => setScatterCount(Number(e.target.value))}
+                  className="flex-1 accent-amber-500"
+                />
+                <span className="text-amber-400 font-mono text-lg w-6 text-center">{scatterCount}</span>
+              </div>
+              <p className="text-xs text-zinc-600">{scatterCount} reminder{scatterCount > 1 ? 's' : ''} will be created at random times spread across the day.</p>
+              <div className="flex flex-col gap-2">
+                <label className="text-xs text-zinc-600">Filter by type (leave empty for all)</label>
+                <div className="flex flex-wrap gap-2">
+                  {ITEM_TYPES.map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => toggleType(t)}
+                      className={`px-3 py-1 rounded-full text-xs border transition-all ${
+                        typesFilter.includes(t)
+                          ? 'bg-amber-500 text-black border-amber-500'
+                          : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {mode === 'random' && (
             <div className="flex flex-col gap-2">

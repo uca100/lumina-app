@@ -31,7 +31,8 @@ export const reminderSchedules = sqliteTable('reminder_schedules', {
   hour: integer('hour').notNull(),
   minute: integer('minute').notNull(),
   typesFilter: text('types_filter').notNull().default('[]'),
-  itemId: text('item_id'),           // null = random, set = always send this item
+  itemId: text('item_id'),
+  mode: text('mode', { enum: ['fixed', 'daily_random'] }).notNull().default('fixed'),
   enabled: integer('enabled').notNull().default(1),
   chatId: integer('chat_id'),
   createdAt: integer('created_at').notNull(),

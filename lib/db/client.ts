@@ -19,11 +19,12 @@ function getDb() {
 }
 
 function ensureSchema(sqlite: Database.Database) {
-  // migrate existing reminder_schedules table if item_id column is missing
-  try {
-    sqlite.exec(`ALTER TABLE reminder_schedules ADD COLUMN item_id TEXT`)
-  } catch {
-    // column already exists — ignore
+  // migrations — safe to run multiple times
+  for (const sql of [
+    `ALTER TABLE reminder_schedules ADD COLUMN item_id TEXT`,
+    `ALTER TABLE reminder_schedules ADD COLUMN mode TEXT NOT NULL DEFAULT 'fixed'`,
+  ]) {
+    try { sqlite.exec(sql) } catch { /* column already exists */ }
   }
 
   sqlite.exec(`

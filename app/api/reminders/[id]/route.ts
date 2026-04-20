@@ -13,6 +13,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     minute: Number(body.minute),
     typesFilter: JSON.stringify(body.typesFilter ?? []),
     itemId: body.itemId ?? null,
+    mode: (body.mode === 'daily_random' ? 'daily_random' : 'fixed') as 'fixed' | 'daily_random',
     enabled: body.enabled,
     chatId: body.chatId ?? null,
   }).where(eq(reminderSchedules.id, id)).run()
