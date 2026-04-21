@@ -9,7 +9,7 @@ WorkingDirectory=/usr/local/lumina
 EnvironmentFile=-/usr/local/lumina/.env.local
 Environment=NODE_ENV=production
 Environment=PORT=3009
-ExecStart=/usr/bin/node node_modules/.bin/tsx server.ts
+ExecStart=/usr/bin/node server.compiled.js
 Restart=always
 RestartSec=5
 
