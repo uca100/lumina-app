@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { reminderSchedules, syncMeta } from '@/lib/db/schema'
 import { asc, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { scheduleSingleDailyRandom } from '@/lib/scheduler/jobs'
 
 export async function GET() {
   const rows = db().select().from(reminderSchedules)
@@ -35,5 +36,11 @@ export async function POST(req: NextRequest) {
   }
 
   db().insert(reminderSchedules).values(schedule).run()
+
+  if (mode === 'daily_random' && schedule.enabled) {
+    const inserted = db().select().from(reminderSchedules).where(eq(reminderSchedules.id, schedule.id)).get()
+    if (inserted) scheduleSingleDailyRandom(inserted).catch(console.error)
+  }
+
   return NextResponse.json({ ...schedule, typesFilter: body.typesFilter ?? [] }, { status: 201 })
 }

@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const result = await classifyAndSave(text, 'telegram')
     await sendMessage(
       chatId,
-      `✦ Saved as *${result.type}*${result.tags.length ? `\nTags: ${result.tags.map(t => `\`${t}\``).join(' ')}` : ''}`
+      `✦ Saved as *${result.type}*${result.tags.length ? `\nTags: ${result.tags.map((t: string) => `\`${t}\``).join(' ')}` : ''}`
     )
   } catch {
     await sendMessage(chatId, '⚠️ Could not save. Try again.')

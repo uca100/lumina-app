@@ -16,7 +16,10 @@ export async function POST(request: Request) {
   const result = await classifyAndSave(text.trim(), 'shortcut', {
     author: body?.author,
     title: body?.title,
+    type: body?.type,
+    tags: Array.isArray(body?.tags) ? body.tags : undefined,
   })
 
-  return NextResponse.json({ ok: true, ...result }, { status: 201 })
+  const status = result.duplicate ? 200 : 201
+  return NextResponse.json({ ok: true, ...result }, { status })
 }

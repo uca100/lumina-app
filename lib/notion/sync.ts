@@ -1,16 +1,17 @@
 import { Client } from '@notionhq/client'
 import { db } from '../db/client'
 import { items, syncMeta } from '../db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, isNotNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY })
 const DB_ID = process.env.NOTION_DATABASE_ID ?? ''
 const NOTION_API_KEY = process.env.NOTION_API_KEY ?? ''
 
-async function queryDatabase(filter?: object): Promise<{ results: unknown[] }> {
-  const body: Record<string, unknown> = {}
+async function queryDatabase(filter?: object, cursor?: string): Promise<{ results: unknown[]; has_more: boolean; next_cursor: string | null }> {
+  const body: Record<string, unknown> = { page_size: 100 }
   if (filter) body.filter = filter
+  if (cursor) body.start_cursor = cursor
   const res = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
     method: 'POST',
     headers: {
@@ -20,7 +21,21 @@ async function queryDatabase(filter?: object): Promise<{ results: unknown[] }> {
     },
     body: JSON.stringify(body),
   })
-  return res.json() as Promise<{ results: unknown[] }>
+  return res.json() as Promise<{ results: unknown[]; has_more: boolean; next_cursor: string | null }>
+}
+
+async function fetchAllNotionIds(): Promise<Set<string>> {
+  const ids = new Set<string>()
+  let cursor: string | undefined
+  do {
+    const res = await queryDatabase(undefined, cursor)
+    for (const page of res.results) {
+      const p = page as { id: string; object: string }
+      if (p.object === 'page') ids.add(p.id)
+    }
+    cursor = res.has_more && res.next_cursor ? res.next_cursor : undefined
+  } while (cursor)
+  return ids
 }
 
 function getSyncMeta(key: string): string | null {
@@ -126,6 +141,28 @@ export async function pullFromNotion() {
   }
 
   setSyncMeta('lastPull', new Date().toISOString())
+}
+
+export async function syncDeletions() {
+  if (!DB_ID) return
+
+  const notionIds = await fetchAllNotionIds()
+  const database = db()
+
+  const local = database.select({ id: items.id, notionId: items.notionId })
+    .from(items)
+    .where(isNotNull(items.notionId))
+    .all()
+
+  let deleted = 0
+  for (const item of local) {
+    if (item.notionId && !notionIds.has(item.notionId)) {
+      database.delete(items).where(eq(items.id, item.id)).run()
+      deleted++
+    }
+  }
+
+  if (deleted > 0) console.log(`[Lumina] Deletion sync: removed ${deleted} item(s) deleted in Notion`)
 }
 
 export async function runSync() {

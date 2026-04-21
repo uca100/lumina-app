@@ -7,7 +7,7 @@ export async function sendNtfy(message: string, title?: string) {
   const res = await fetch(`${NTFY_BASE}/${topic}`, {
     method: 'POST',
     headers: {
-      'Title': title ?? 'Lumina',
+      'Title': (title ?? 'Lumina').replace(/[^\x00-\x7F]/g, '').trim() || 'Lumina',
       'Priority': 'default',
       'Tags': 'sparkles',
       'Content-Type': 'text/plain',

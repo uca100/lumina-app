@@ -1,5 +1,5 @@
 import cron from 'node-cron'
-import { runSync } from '../notion/sync'
+import { runSync, syncDeletions } from '../notion/sync'
 import { checkEmail } from '../email/ingest'
 import { db } from '../db/client'
 import { reminderSchedules, items, syncMeta } from '../db/schema'
@@ -8,6 +8,37 @@ import { sendMessage } from '../telegram/bot'
 import { sendNtfy } from '../ntfy/notify'
 
 let lastDailyRandomDate = ''
+
+export async function scheduleSingleDailyRandom(schedule: typeof reminderSchedules.$inferSelect) {
+  const meta = db().select().from(syncMeta).where(eq(syncMeta.key, 'telegram_chat_id')).get()
+  const globalChatId = meta ? Number(meta.value) : null
+  const chatId = schedule.chatId ?? globalChatId
+
+  const now = new Date()
+  const currentMinute = now.getHours() * 60 + now.getMinutes()
+  const START = 8 * 60
+  const END = 22 * 60
+  const windowStart = Math.max(START, currentMinute + 1)
+
+  if (windowStart >= END) return
+
+  const randomMinute = windowStart + Math.floor(Math.random() * (END - windowStart))
+  const fireAt = new Date(now)
+  fireAt.setHours(Math.floor(randomMinute / 60), randomMinute % 60, 0, 0)
+
+  const msUntil = fireAt.getTime() - now.getTime()
+  if (msUntil <= 0) return
+
+  setTimeout(async () => {
+    try {
+      await fireReminder(schedule, chatId)
+    } catch (err) {
+      console.error('[Lumina] Daily random reminder error:', schedule.id, err)
+    }
+  }, msUntil)
+
+  console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${fireAt.toTimeString().slice(0, 5)}`)
+}
 
 async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, chatId: number | null) {
   let pick
@@ -51,11 +82,19 @@ function scheduleDailyRandoms() {
     .where(and(eq(reminderSchedules.mode, 'daily_random'), eq(reminderSchedules.enabled, 1)))
     .all()
 
+  const now = new Date()
+  const currentMinute = now.getHours() * 60 + now.getMinutes()
+  const START = 8 * 60
+  const END = 22 * 60
+  const windowStart = Math.max(START, currentMinute + 1)
+
+  if (windowStart >= END) {
+    console.log('[Lumina] Daily random: past 22:00, skipping today')
+    return
+  }
+
   for (const schedule of randoms) {
-    const now = new Date()
-    const START = 8 * 60
-    const END = 22 * 60
-    const randomMinute = START + Math.floor(Math.random() * (END - START))
+    const randomMinute = windowStart + Math.floor(Math.random() * (END - windowStart))
     const fireAt = new Date(now)
     fireAt.setHours(Math.floor(randomMinute / 60), randomMinute % 60, 0, 0)
 
@@ -129,6 +168,16 @@ export function initScheduler() {
       } catch (err) {
         console.error('[Lumina] Email error:', err)
       }
+    }
+  })
+
+  // deletion sync once a day at 03:00
+  cron.schedule('0 3 * * *', async () => {
+    console.log('[Lumina] Running deletion sync...')
+    try {
+      await syncDeletions()
+    } catch (err) {
+      console.error('[Lumina] Deletion sync error:', err)
     }
   })
 

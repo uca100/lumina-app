@@ -176,19 +176,33 @@ export default function IntegrationsPage() {
                   <p className="text-zinc-500 mb-2 uppercase tracking-widest text-[10px]">Action 1 — Send current draft immediately</p>
                   <pre className="bg-black p-4 rounded-xl border border-zinc-800 text-[10px] text-amber-200 overflow-x-auto whitespace-pre-wrap">{`const LUMINA_URL = "${config.baseUrl}/lumina/api/ingest/shortcut";
 const INGEST_KEY = "${config.ingestKey}";
+const TYPE_MAP = { quote: "Quote", affirmation: "Affirmation", story: "Story", thought: "Thought" };
+const THEMATIC = ["lessons", "habit", "inspiring"];
+
+// Read type + thematic tags from the draft's tags
+let typeHint = null;
+const extraTags = [];
+for (const t of draft.tags) {
+  const lower = t.toLowerCase();
+  if (TYPE_MAP[lower]) typeHint = TYPE_MAP[lower];
+  else if (THEMATIC.includes(lower)) extraTags.push(lower);
+}
+
+const payload = { body: draft.content, title: draft.title || undefined };
+if (typeHint) payload.type = typeHint;
+if (extraTags.length) payload.tags = extraTags;
 
 const http = new HTTP();
 const response = http.request({
   url: LUMINA_URL, method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": \`Bearer \${INGEST_KEY}\`
-  },
-  data: { body: draft.content, title: draft.title || undefined }
+  headers: { "Content-Type": "application/json", "Authorization": \`Bearer \${INGEST_KEY}\` },
+  data: payload
 });
 
 if (response.success) {
-  app.displaySuccessMessage("Sent to Lumina ✓");
+  const res = JSON.parse(response.responseText);
+  if (res.duplicate) app.displayInfoMessage("Already in Lumina — skipped");
+  else app.displaySuccessMessage(\`Saved as \${res.type} ✓\`);
 } else {
   app.displayErrorMessage("Error: " + response.statusCode);
   context.fail();
@@ -196,31 +210,47 @@ if (response.success) {
                 </div>
                 <div>
                   <p className="text-zinc-500 mb-2 uppercase tracking-widest text-[10px]">Action 2 — Flush all drafts tagged &quot;lumina&quot;</p>
+                  <p className="text-[10px] text-zinc-600 mb-3 leading-relaxed">Tags control how items are classified. Add <code className="text-zinc-400">quote</code>, <code className="text-zinc-400">affirmation</code>, <code className="text-zinc-400">story</code>, or <code className="text-zinc-400">thought</code> to skip AI and set the type directly. Add <code className="text-zinc-400">lessons</code>, <code className="text-zinc-400">habit</code>, or <code className="text-zinc-400">inspiring</code> to tag the item. Only <code className="text-zinc-400">lumina</code>? AI handles everything.</p>
                   <pre className="bg-black p-4 rounded-xl border border-zinc-800 text-[10px] text-amber-200 overflow-x-auto whitespace-pre-wrap">{`const LUMINA_URL = "${config.baseUrl}/lumina/api/ingest/shortcut";
 const INGEST_KEY = "${config.ingestKey}";
 const TAG = "lumina";
+const TYPE_MAP = { quote: "Quote", affirmation: "Affirmation", story: "Story", thought: "Thought" };
+const THEMATIC = ["lessons", "habit", "inspiring"];
 
 const drafts = Draft.query("", "inbox", [TAG]);
 if (drafts.length === 0) {
   app.displayInfoMessage("No drafts tagged 'lumina'");
 } else {
-  let sent = 0, failed = 0;
+  let sent = 0, failed = 0, skipped = 0;
   for (const d of drafts) {
+    let typeHint = null;
+    const extraTags = [];
+    for (const t of d.tags) {
+      const lower = t.toLowerCase();
+      if (TYPE_MAP[lower]) typeHint = TYPE_MAP[lower];
+      else if (THEMATIC.includes(lower)) extraTags.push(lower);
+    }
+
+    const payload = { body: d.content, title: d.title || undefined };
+    if (typeHint) payload.type = typeHint;
+    if (extraTags.length) payload.tags = extraTags;
+
     const http = new HTTP();
     const response = http.request({
       url: LUMINA_URL, method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": \`Bearer \${INGEST_KEY}\`
-      },
-      data: { body: d.content, title: d.title || undefined }
+      headers: { "Content-Type": "application/json", "Authorization": \`Bearer \${INGEST_KEY}\` },
+      data: payload
     });
     if (response.success) {
-      d.removeTag(TAG); d.isArchived = true; d.update(); sent++;
+      const res = JSON.parse(response.responseText);
+      d.removeTag(TAG); d.isArchived = true; d.update();
+      if (res.duplicate) skipped++; else sent++;
     } else { failed++; }
   }
-  if (failed === 0) app.displaySuccessMessage(\`Sent \${sent} draft(s) ✓\`);
-  else app.displayErrorMessage(\`\${sent} sent, \${failed} failed\`);
+  let msg = \`Sent \${sent} draft(s) ✓\`;
+  if (skipped) msg += \`, \${skipped} already existed\`;
+  if (failed) app.displayErrorMessage(\`\${sent} sent, \${failed} failed\`);
+  else app.displaySuccessMessage(msg);
 }`}</pre>
                 </div>
               </div>
