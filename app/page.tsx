@@ -101,8 +101,16 @@ export default function FeedPage() {
             <Link
               href="/reminders"
               className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all"
+              title="Reminders"
             >
               ⏰
+            </Link>
+            <Link
+              href="/integrations"
+              className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all"
+              title="Integrations"
+            >
+              📱
             </Link>
             <Link
               href="/capture"

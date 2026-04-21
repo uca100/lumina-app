@@ -6,6 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased] - 2026-04-21
 
 ### Added
+- Integrations nav button (📱) added to feed page header
+- ntfy notifications now send with Markdown enabled
+- ntfy error logging when push fails
+
+### Changed
+- Reminders nav button now has a `title` tooltip attribute
+
+---
+
+## [Unreleased] - 2026-04-21
+
+### Added
 - Drafts app integration: two iOS Drafts Actions for capturing content into Lumina
   - "Send to Lumina": sends current draft immediately via POST /api/ingest/shortcut
   - "Flush to Lumina": batch sends all drafts tagged `lumina`, archives them after
