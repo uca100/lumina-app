@@ -6,9 +6,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased] - 2026-04-21
 
 ### Added
+- Drafts tag routing: type tags (quote/affirmation/story/thought) skip AI; thematic tags (lessons/habit/inspiring) are passed as item tags
+- Ingest deduplication: duplicate items (same body text) are detected and skipped without re-inserting or calling AI
+- Notion deletion sync: daily job at 03:00 removes local items deleted/archived in Notion, with full pagination
+- New daily_random reminders created via API are immediately scheduled for today without waiting for midnight
 - Integrations nav button (📱) added to feed page header
 - ntfy notifications now send with Markdown enabled
 - ntfy error logging when push fails
+
+### Fixed
+- ntfy notifications crashing on Hebrew/non-ASCII item titles (HTTP headers must be ASCII)
+- Daily random reminders now use remaining window when scheduler starts mid-day (was picking times already in the past)
 
 ### Changed
 - Reminders nav button now has a `title` tooltip attribute
