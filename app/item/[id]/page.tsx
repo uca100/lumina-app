@@ -6,13 +6,15 @@ import { TagBadge } from '@/components/TagBadge'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
 
-const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought'] as const
+const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'] as const
 
 const TYPE_ACCENT: Record<string, string> = {
   Quote:       'from-sky-50 to-white border-sky-100',
   Affirmation: 'from-emerald-50 to-white border-emerald-100',
   Story:       'from-violet-50 to-white border-violet-100',
   Thought:     'from-amber-50 to-white border-amber-100',
+  Lesson:      'from-rose-50 to-white border-rose-100',
+  Habit:       'from-teal-50 to-white border-teal-100',
 }
 
 const TYPE_BADGE: Record<string, string> = {
@@ -20,6 +22,8 @@ const TYPE_BADGE: Record<string, string> = {
   Affirmation: 'text-emerald-700 bg-emerald-50 border-emerald-200',
   Story:       'text-violet-700 bg-violet-50 border-violet-200',
   Thought:     'text-amber-700 bg-amber-50 border-amber-200',
+  Lesson:      'text-rose-700 bg-rose-50 border-rose-200',
+  Habit:       'text-teal-700 bg-teal-50 border-teal-200',
 }
 
 export default function ItemPage() {

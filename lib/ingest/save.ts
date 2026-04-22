@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 
 type Source = 'manual' | 'whatsapp' | 'email' | 'voice' | 'telegram' | 'shortcut'
 
-const VALID_TYPES = new Set(['Quote', 'Affirmation', 'Story', 'Thought'])
+const VALID_TYPES = new Set(['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'])
 
 export async function classifyAndSave(
   body: string,
@@ -21,10 +21,10 @@ export async function classifyAndSave(
   const id = nanoid()
 
   const presetType = meta?.type && VALID_TYPES.has(meta.type)
-    ? meta.type as 'Quote' | 'Affirmation' | 'Story' | 'Thought'
+    ? meta.type as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
     : null
 
-  let type: 'Quote' | 'Affirmation' | 'Story' | 'Thought'
+  let type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
   let author: string | null
   let tags: string[]
   let title: string | null

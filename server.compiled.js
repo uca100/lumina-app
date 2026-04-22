@@ -47,7 +47,7 @@ var items = (0, import_sqlite_core.sqliteTable)("items", {
   id: (0, import_sqlite_core.text)("id").primaryKey(),
   title: (0, import_sqlite_core.text)("title"),
   body: (0, import_sqlite_core.text)("body").notNull(),
-  type: (0, import_sqlite_core.text)("type", { enum: ["Quote", "Affirmation", "Story", "Thought"] }).notNull().default("Thought"),
+  type: (0, import_sqlite_core.text)("type", { enum: ["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit"] }).notNull().default("Thought"),
   source: (0, import_sqlite_core.text)("source", { enum: ["manual", "whatsapp", "email", "voice", "telegram", "shortcut"] }).notNull().default("manual"),
   author: (0, import_sqlite_core.text)("author"),
   tags: (0, import_sqlite_core.text)("tags").notNull().default("[]"),
@@ -299,7 +299,7 @@ var import_sdk = __toESM(require("@anthropic-ai/sdk"));
 var client = new import_sdk.default({ apiKey: process.env.CLAUDE_API_KEY });
 var SYSTEM_PROMPT = `You are a content classifier for a personal inspiration app called Lumina.
 When given a piece of text, you will:
-1. Classify it as one of: Quote, Affirmation, Story, or Thought
+1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, or Habit
 2. Extract the author if present (for quotes)
 3. Suggest 3-5 concise tags that capture the theme, topic, or mood
 4. Generate a short title (max 8 words) summarizing the content
@@ -309,6 +309,8 @@ Definitions:
 - Affirmation: A positive self-directed statement meant to be repeated
 - Story: A narrative or anecdote, longer-form
 - Thought: A personal reflection, idea, or insight
+- Lesson: A key takeaway, learning, or principle derived from experience
+- Habit: A routine, practice, or behavioral pattern worth building
 
 Respond ONLY with valid JSON in this exact shape:
 {
@@ -340,7 +342,7 @@ async function classifyItem(body) {
 // lib/ingest/save.ts
 var import_nanoid2 = require("nanoid");
 var import_drizzle_orm2 = require("drizzle-orm");
-var VALID_TYPES = /* @__PURE__ */ new Set(["Quote", "Affirmation", "Story", "Thought"]);
+var VALID_TYPES = /* @__PURE__ */ new Set(["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit"]);
 async function classifyAndSave(body, source, meta) {
   const normalizedBody = body.trim();
   const existing = db().select().from(items).where((0, import_drizzle_orm2.eq)(items.body, normalizedBody)).get();
@@ -450,15 +452,24 @@ async function sendMessage(chatId, text2) {
 
 // lib/ntfy/notify.ts
 var NTFY_BASE = "https://ntfy.sh";
-async function sendNtfy(message, title) {
+var TYPE_EMOJI = {
+  Quote: "speech_balloon",
+  Affirmation: "star",
+  Story: "books",
+  Thought: "thought_balloon",
+  Lesson: "mortar_board",
+  Habit: "seedling"
+};
+async function sendNtfy(message, title, type) {
   const topic = process.env.NTFY_TOPIC;
   if (!topic) return;
+  const tag = (type && TYPE_EMOJI[type]) ?? "sparkles";
   const res = await fetch(`${NTFY_BASE}/${topic}`, {
     method: "POST",
     headers: {
       "Title": (title ?? "Lumina").replace(/[^\x00-\x7F]/g, "").trim() || "Lumina",
       "Priority": "default",
-      "Tags": "sparkles",
+      "Tags": tag,
       "Content-Type": "text/plain",
       "Markdown": "yes"
     },
@@ -486,12 +497,11 @@ async function fireReminder(schedule, chatId) {
   const lines = [
     ...pick.title ? [`*${pick.title}*`] : [],
     pick.body,
-    ...pick.author ? [`\u2014 ${pick.author}`] : [],
-    ...tags.length ? [tags.map((t) => `#${t}`).join(" ")] : []
+    ...pick.author ? [`\u2014 ${pick.author}`] : []
   ];
   const text2 = lines.join("\n");
   if (process.env.NTFY_TOPIC) {
-    await sendNtfy(text2, pick.title ?? void 0);
+    await sendNtfy(text2, pick.title ?? void 0, pick.type ?? void 0);
   } else if (chatId) {
     await sendMessage(chatId, text2);
   }

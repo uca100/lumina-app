@@ -113,7 +113,7 @@ export async function pullFromNotion() {
     const existing = database.select().from(items).where(eq(items.notionId, page.id)).get()
     const now = Date.now()
     const title = p.Title?.title?.map((t) => t.plain_text).join('') ?? null
-    const type = (p.Type?.select?.name as 'Quote' | 'Affirmation' | 'Story' | 'Thought') ?? 'Thought'
+    const type = (p.Type?.select?.name as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit') ?? 'Thought'
     const source = (p.Source?.select?.name as 'manual' | 'whatsapp' | 'email' | 'voice') ?? 'manual'
     const author = p.Author?.rich_text?.map((r) => r.plain_text).join('') || null
     const tags = JSON.stringify(p.Tags?.multi_select?.map((t) => t.name) ?? [])

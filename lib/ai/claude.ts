@@ -4,7 +4,7 @@ const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY })
 
 const SYSTEM_PROMPT = `You are a content classifier for a personal inspiration app called Lumina.
 When given a piece of text, you will:
-1. Classify it as one of: Quote, Affirmation, Story, or Thought
+1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, or Habit
 2. Extract the author if present (for quotes)
 3. Suggest 3-5 concise tags that capture the theme, topic, or mood
 4. Generate a short title (max 8 words) summarizing the content
@@ -14,6 +14,8 @@ Definitions:
 - Affirmation: A positive self-directed statement meant to be repeated
 - Story: A narrative or anecdote, longer-form
 - Thought: A personal reflection, idea, or insight
+- Lesson: A key takeaway, learning, or principle derived from experience
+- Habit: A routine, practice, or behavioral pattern worth building
 
 Respond ONLY with valid JSON in this exact shape:
 {
@@ -26,7 +28,7 @@ Respond ONLY with valid JSON in this exact shape:
 No markdown, no explanation, only the JSON object.`
 
 export async function classifyItem(body: string): Promise<{
-  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought'
+  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
   author: string | null
   tags: string[]
   title: string

@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const database = db()
   const conditions = []
   if (q) conditions.push(like(items.body, `%${q}%`))
-  if (type) conditions.push(eq(items.type, type as 'Quote' | 'Affirmation' | 'Story' | 'Thought'))
+  if (type) conditions.push(eq(items.type, type as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'))
 
   const rows = conditions.length
     ? database.select().from(items).where(and(...conditions)).orderBy(desc(items.createdAt)).limit(100).all()

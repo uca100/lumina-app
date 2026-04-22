@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const types = typeParam ? typeParam.split(',').map(s => s.trim()).filter(Boolean) : []
 
   const all = types.length
-    ? db().select().from(items).where(inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought')[])).all()
+    ? db().select().from(items).where(inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit')[])).all()
     : db().select().from(items).all()
 
   if (!all.length) return NextResponse.json({ error: 'No items' }, { status: 404 })

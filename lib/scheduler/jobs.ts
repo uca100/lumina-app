@@ -17,7 +17,7 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, cha
   } else {
     const types: string[] = JSON.parse(schedule.typesFilter)
     const all = types.length
-      ? db().select().from(items).where(inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought')[])).all()
+      ? db().select().from(items).where(inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit')[])).all()
       : db().select().from(items).all()
     if (!all.length) return
     pick = all[Math.floor(Math.random() * all.length)]
@@ -28,12 +28,11 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, cha
     ...(pick.title ? [`*${pick.title}*`] : []),
     pick.body,
     ...(pick.author ? [`— ${pick.author}`] : []),
-    ...(tags.length ? [tags.map(t => `#${t}`).join(' ')] : []),
   ]
   const text = lines.join('\n')
 
   if (process.env.NTFY_TOPIC) {
-    await sendNtfy(text, pick.title ?? undefined)
+    await sendNtfy(text, pick.title ?? undefined, pick.type ?? undefined)
   } else if (chatId) {
     await sendMessage(chatId, text)
   }

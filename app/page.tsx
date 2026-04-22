@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ItemCard, Item } from '@/components/ItemCard'
 
-const TYPES = ['', 'Quote', 'Affirmation', 'Story', 'Thought'] as const
+const TYPES = ['', 'Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'] as const
 
 const TYPE_ICONS: Record<string, string> = {
   '': '✦',
@@ -13,6 +13,8 @@ const TYPE_ICONS: Record<string, string> = {
   Affirmation: '✿',
   Story: '◈',
   Thought: '◎',
+  Lesson: '◆',
+  Habit: '⬡',
 }
 
 export default function FeedPage() {

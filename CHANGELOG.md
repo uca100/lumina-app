@@ -3,7 +3,21 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased] - 2026-04-22
+## [Unreleased] - 2026-04-22 (session 3)
+
+### Added
+- `Lesson` and `Habit` as new item types, added everywhere: DB schema enum, AI classifier prompt/definitions, ingest validation, Notion sync, all API routes, scheduler, feed filters, capture form, item detail page, reminders type filter, and Drafts integrations code
+- Per-type emoji in ntfy notifications: Quote 💬, Affirmation ⭐, Story 📚, Thought 💭, Lesson 🎓, Habit 🌱
+- Lesson/Habit color themes: rose (Lesson) and teal (Habit) across all UI components
+
+### Changed
+- Removed `#hashtag` lines from notification message body (tags no longer appended)
+- Removed ntfy `Tags` sparkles header; replaced with per-type emoji tags
+- Drafts TYPE_MAP updated to include `lesson` and `habit` as type keywords; `habit` removed from THEMATIC list
+
+---
+
+## [Unreleased] - 2026-04-22 (session 2)
 
 ### Added
 - `daily_scatter` reminder mode: N random times per day, spread across 08:00–22:00, re-picked each morning at midnight

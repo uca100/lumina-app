@@ -9,7 +9,7 @@ export interface Item {
   id: string
   title: string | null
   body: string
-  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought'
+  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
   source: string
   author: string | null
   tags: string[]
@@ -22,6 +22,8 @@ const TYPE_CONFIG: Record<string, { label: string; border: string; badge: string
   Affirmation: { label: 'Affirmation', border: 'border-l-emerald-500/60', badge: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30', quote: false },
   Story:       { label: 'Story',       border: 'border-l-violet-500/60',  badge: 'text-violet-400 bg-violet-500/10 border-violet-500/30', quote: false },
   Thought:     { label: 'Thought',     border: 'border-l-amber-500/60',   badge: 'text-amber-400 bg-amber-500/10 border-amber-500/30',   quote: false },
+  Lesson:      { label: 'Lesson',      border: 'border-l-rose-500/60',    badge: 'text-rose-400 bg-rose-500/10 border-rose-500/30',      quote: false },
+  Habit:       { label: 'Habit',       border: 'border-l-teal-500/60',    badge: 'text-teal-400 bg-teal-500/10 border-teal-500/30',      quote: false },
 }
 
 export function ItemCard({ item, onDeleted }: { item: Item; onDeleted?: (id: string) => void }) {
