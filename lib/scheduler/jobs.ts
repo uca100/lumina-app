@@ -9,37 +9,6 @@ import { sendNtfy } from '../ntfy/notify'
 
 let lastDailyRandomDate = ''
 
-export async function scheduleSingleDailyRandom(schedule: typeof reminderSchedules.$inferSelect) {
-  const meta = db().select().from(syncMeta).where(eq(syncMeta.key, 'telegram_chat_id')).get()
-  const globalChatId = meta ? Number(meta.value) : null
-  const chatId = schedule.chatId ?? globalChatId
-
-  const now = new Date()
-  const currentMinute = now.getHours() * 60 + now.getMinutes()
-  const START = 8 * 60
-  const END = 22 * 60
-  const windowStart = Math.max(START, currentMinute + 1)
-
-  if (windowStart >= END) return
-
-  const randomMinute = windowStart + Math.floor(Math.random() * (END - windowStart))
-  const fireAt = new Date(now)
-  fireAt.setHours(Math.floor(randomMinute / 60), randomMinute % 60, 0, 0)
-
-  const msUntil = fireAt.getTime() - now.getTime()
-  if (msUntil <= 0) return
-
-  setTimeout(async () => {
-    try {
-      await fireReminder(schedule, chatId)
-    } catch (err) {
-      console.error('[Lumina] Daily random reminder error:', schedule.id, err)
-    }
-  }, msUntil)
-
-  console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${fireAt.toTimeString().slice(0, 5)}`)
-}
-
 async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, chatId: number | null) {
   let pick
   if (schedule.itemId) {
@@ -70,47 +39,93 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, cha
   }
 }
 
+function randomMinutesInWindow(count: number, windowStart: number): number[] {
+  const END = 22 * 60
+  const available = END - windowStart
+  if (available <= 0) return []
+
+  const segment = Math.floor(available / count)
+  const result: number[] = []
+  for (let i = 0; i < count; i++) {
+    const base = windowStart + i * segment
+    const offset = Math.floor(Math.random() * Math.max(segment, 1))
+    result.push(Math.min(base + offset, END - 1))
+  }
+  return result
+}
+
+function scheduleFireAt(minuteOfDay: number, schedule: typeof reminderSchedules.$inferSelect, chatId: number | null) {
+  const now = new Date()
+  const fireAt = new Date(now)
+  fireAt.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0)
+  const msUntil = fireAt.getTime() - now.getTime()
+  if (msUntil <= 0) return false
+
+  setTimeout(async () => {
+    try { await fireReminder(schedule, chatId) }
+    catch (err) { console.error('[Lumina] Reminder fire error:', schedule.id, err) }
+  }, msUntil)
+
+  return true
+}
+
+export async function scheduleSingleDailyRandom(schedule: typeof reminderSchedules.$inferSelect) {
+  const meta = db().select().from(syncMeta).where(eq(syncMeta.key, 'telegram_chat_id')).get()
+  const chatId = schedule.chatId ?? (meta ? Number(meta.value) : null)
+
+  const now = new Date()
+  const currentMinute = now.getHours() * 60 + now.getMinutes()
+  const windowStart = Math.max(8 * 60, currentMinute + 1)
+
+  const [minute] = randomMinutesInWindow(1, windowStart)
+  if (minute === undefined) return
+
+  if (scheduleFireAt(minute, schedule, chatId)) {
+    const h = Math.floor(minute / 60), m = minute % 60
+    console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)
+  }
+}
+
+async function scheduleDailyScatter(schedule: typeof reminderSchedules.$inferSelect) {
+  const meta = db().select().from(syncMeta).where(eq(syncMeta.key, 'telegram_chat_id')).get()
+  const chatId = schedule.chatId ?? (meta ? Number(meta.value) : null)
+
+  const now = new Date()
+  const currentMinute = now.getHours() * 60 + now.getMinutes()
+  const windowStart = Math.max(8 * 60, currentMinute + 1)
+
+  const count = schedule.count ?? 1
+  const minutes = randomMinutesInWindow(count, windowStart)
+  let scheduled = 0
+
+  for (const minute of minutes) {
+    if (scheduleFireAt(minute, schedule, chatId)) scheduled++
+  }
+
+  if (scheduled > 0) {
+    console.log(`[Lumina] Daily scatter scheduled: ${schedule.label || schedule.id} — ${scheduled}× today`)
+  }
+}
+
 function scheduleDailyRandoms() {
   const today = new Date().toDateString()
   if (lastDailyRandomDate === today) return
   lastDailyRandomDate = today
 
-  const meta = db().select().from(syncMeta).where(eq(syncMeta.key, 'telegram_chat_id')).get()
-  const globalChatId = meta ? Number(meta.value) : null
-
   const randoms = db().select().from(reminderSchedules)
     .where(and(eq(reminderSchedules.mode, 'daily_random'), eq(reminderSchedules.enabled, 1)))
     .all()
 
-  const now = new Date()
-  const currentMinute = now.getHours() * 60 + now.getMinutes()
-  const START = 8 * 60
-  const END = 22 * 60
-  const windowStart = Math.max(START, currentMinute + 1)
-
-  if (windowStart >= END) {
-    console.log('[Lumina] Daily random: past 22:00, skipping today')
-    return
+  for (const schedule of randoms) {
+    scheduleSingleDailyRandom(schedule).catch(console.error)
   }
 
-  for (const schedule of randoms) {
-    const randomMinute = windowStart + Math.floor(Math.random() * (END - windowStart))
-    const fireAt = new Date(now)
-    fireAt.setHours(Math.floor(randomMinute / 60), randomMinute % 60, 0, 0)
+  const scatters = db().select().from(reminderSchedules)
+    .where(and(eq(reminderSchedules.mode, 'daily_scatter'), eq(reminderSchedules.enabled, 1)))
+    .all()
 
-    const msUntil = fireAt.getTime() - now.getTime()
-    if (msUntil <= 0) continue
-
-    const chatId = schedule.chatId ?? globalChatId
-    setTimeout(async () => {
-      try {
-        await fireReminder(schedule, chatId)
-      } catch (err) {
-        console.error('[Lumina] Daily random reminder error:', schedule.id, err)
-      }
-    }, msUntil)
-
-    console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${fireAt.toTimeString().slice(0, 5)}`)
+  for (const schedule of scatters) {
+    scheduleDailyScatter(schedule).catch(console.error)
   }
 }
 
@@ -145,7 +160,6 @@ function initReminderJobs() {
     }
   })
 
-  // schedule daily randoms at midnight + on startup
   cron.schedule('0 0 * * *', scheduleDailyRandoms)
   scheduleDailyRandoms()
 }
@@ -171,7 +185,6 @@ export function initScheduler() {
     }
   })
 
-  // deletion sync once a day at 03:00
   cron.schedule('0 3 * * *', async () => {
     console.log('[Lumina] Running deletion sync...')
     try {

@@ -73,7 +73,8 @@ var reminderSchedules = (0, import_sqlite_core.sqliteTable)("reminder_schedules"
   minute: (0, import_sqlite_core.integer)("minute").notNull(),
   typesFilter: (0, import_sqlite_core.text)("types_filter").notNull().default("[]"),
   itemId: (0, import_sqlite_core.text)("item_id"),
-  mode: (0, import_sqlite_core.text)("mode", { enum: ["fixed", "daily_random"] }).notNull().default("fixed"),
+  mode: (0, import_sqlite_core.text)("mode", { enum: ["fixed", "daily_random", "daily_scatter"] }).notNull().default("fixed"),
+  count: (0, import_sqlite_core.integer)("count").notNull().default(1),
   enabled: (0, import_sqlite_core.integer)("enabled").notNull().default(1),
   chatId: (0, import_sqlite_core.integer)("chat_id"),
   createdAt: (0, import_sqlite_core.integer)("created_at").notNull()
@@ -95,7 +96,8 @@ function getDb() {
 function ensureSchema(sqlite) {
   for (const sql of [
     `ALTER TABLE reminder_schedules ADD COLUMN item_id TEXT`,
-    `ALTER TABLE reminder_schedules ADD COLUMN mode TEXT NOT NULL DEFAULT 'fixed'`
+    `ALTER TABLE reminder_schedules ADD COLUMN mode TEXT NOT NULL DEFAULT 'fixed'`,
+    `ALTER TABLE reminder_schedules ADD COLUMN count INTEGER NOT NULL DEFAULT 1`
   ]) {
     try {
       sqlite.exec(sql);
@@ -494,37 +496,74 @@ async function fireReminder(schedule, chatId) {
     await sendMessage(chatId, text2);
   }
 }
+function randomMinutesInWindow(count, windowStart) {
+  const END = 22 * 60;
+  const available = END - windowStart;
+  if (available <= 0) return [];
+  const segment = Math.floor(available / count);
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    const base = windowStart + i * segment;
+    const offset = Math.floor(Math.random() * Math.max(segment, 1));
+    result.push(Math.min(base + offset, END - 1));
+  }
+  return result;
+}
+function scheduleFireAt(minuteOfDay, schedule, chatId) {
+  const now = /* @__PURE__ */ new Date();
+  const fireAt = new Date(now);
+  fireAt.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0);
+  const msUntil = fireAt.getTime() - now.getTime();
+  if (msUntil <= 0) return false;
+  setTimeout(async () => {
+    try {
+      await fireReminder(schedule, chatId);
+    } catch (err) {
+      console.error("[Lumina] Reminder fire error:", schedule.id, err);
+    }
+  }, msUntil);
+  return true;
+}
+async function scheduleSingleDailyRandom(schedule) {
+  const meta = db().select().from(syncMeta).where((0, import_drizzle_orm3.eq)(syncMeta.key, "telegram_chat_id")).get();
+  const chatId = schedule.chatId ?? (meta ? Number(meta.value) : null);
+  const now = /* @__PURE__ */ new Date();
+  const currentMinute = now.getHours() * 60 + now.getMinutes();
+  const windowStart = Math.max(8 * 60, currentMinute + 1);
+  const [minute] = randomMinutesInWindow(1, windowStart);
+  if (minute === void 0) return;
+  if (scheduleFireAt(minute, schedule, chatId)) {
+    const h = Math.floor(minute / 60), m = minute % 60;
+    console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+  }
+}
+async function scheduleDailyScatter(schedule) {
+  const meta = db().select().from(syncMeta).where((0, import_drizzle_orm3.eq)(syncMeta.key, "telegram_chat_id")).get();
+  const chatId = schedule.chatId ?? (meta ? Number(meta.value) : null);
+  const now = /* @__PURE__ */ new Date();
+  const currentMinute = now.getHours() * 60 + now.getMinutes();
+  const windowStart = Math.max(8 * 60, currentMinute + 1);
+  const count = schedule.count ?? 1;
+  const minutes = randomMinutesInWindow(count, windowStart);
+  let scheduled = 0;
+  for (const minute of minutes) {
+    if (scheduleFireAt(minute, schedule, chatId)) scheduled++;
+  }
+  if (scheduled > 0) {
+    console.log(`[Lumina] Daily scatter scheduled: ${schedule.label || schedule.id} \u2014 ${scheduled}\xD7 today`);
+  }
+}
 function scheduleDailyRandoms() {
   const today = (/* @__PURE__ */ new Date()).toDateString();
   if (lastDailyRandomDate === today) return;
   lastDailyRandomDate = today;
-  const meta = db().select().from(syncMeta).where((0, import_drizzle_orm3.eq)(syncMeta.key, "telegram_chat_id")).get();
-  const globalChatId = meta ? Number(meta.value) : null;
   const randoms = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)((0, import_drizzle_orm3.eq)(reminderSchedules.mode, "daily_random"), (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1))).all();
-  const now = /* @__PURE__ */ new Date();
-  const currentMinute = now.getHours() * 60 + now.getMinutes();
-  const START = 8 * 60;
-  const END = 22 * 60;
-  const windowStart = Math.max(START, currentMinute + 1);
-  if (windowStart >= END) {
-    console.log("[Lumina] Daily random: past 22:00, skipping today");
-    return;
-  }
   for (const schedule of randoms) {
-    const randomMinute = windowStart + Math.floor(Math.random() * (END - windowStart));
-    const fireAt = new Date(now);
-    fireAt.setHours(Math.floor(randomMinute / 60), randomMinute % 60, 0, 0);
-    const msUntil = fireAt.getTime() - now.getTime();
-    if (msUntil <= 0) continue;
-    const chatId = schedule.chatId ?? globalChatId;
-    setTimeout(async () => {
-      try {
-        await fireReminder(schedule, chatId);
-      } catch (err) {
-        console.error("[Lumina] Daily random reminder error:", schedule.id, err);
-      }
-    }, msUntil);
-    console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${fireAt.toTimeString().slice(0, 5)}`);
+    scheduleSingleDailyRandom(schedule).catch(console.error);
+  }
+  const scatters = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)((0, import_drizzle_orm3.eq)(reminderSchedules.mode, "daily_scatter"), (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1))).all();
+  for (const schedule of scatters) {
+    scheduleDailyScatter(schedule).catch(console.error);
   }
 }
 function initReminderJobs() {

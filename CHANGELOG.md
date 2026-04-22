@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased] - 2026-04-22
 
+### Added
+- `daily_scatter` reminder mode: N random times per day, spread across 08:00–22:00, re-picked each morning at midnight
+- `count` column on `reminder_schedules` table to store times-per-day for scatter mode
+
+### Changed
+- Reminders page fully redesigned: replaced 4-mode toggle with 3 simple questions (how many / when / what)
+- Removed Telegram status and iOS Shortcuts sections from reminders page (belong in Integrations)
+
 ### Fixed
 - **Recurring crashes (SIGSEGV exit 139):** tsx v4.21 was crashing on pi5 ARM64 every 30–110 min with no trace. Fixed by compiling server.ts to server.compiled.js at build time (esbuild, CJS, packages external) and running plain `node server.compiled.js` — no tsx at runtime.
 

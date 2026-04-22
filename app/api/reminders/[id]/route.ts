@@ -7,13 +7,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const body = await req.json()
 
+  type Mode = 'fixed' | 'daily_random' | 'daily_scatter'
+  const mode: Mode =
+    body.mode === 'daily_random' ? 'daily_random'
+    : body.mode === 'daily_scatter' ? 'daily_scatter'
+    : 'fixed'
+
   db().update(reminderSchedules).set({
     label: body.label,
-    hour: Number(body.hour),
-    minute: Number(body.minute),
+    hour: mode === 'fixed' ? Number(body.hour) : 0,
+    minute: mode === 'fixed' ? Number(body.minute) : 0,
     typesFilter: JSON.stringify(body.typesFilter ?? []),
     itemId: body.itemId ?? null,
-    mode: (body.mode === 'daily_random' ? 'daily_random' : 'fixed') as 'fixed' | 'daily_random',
+    mode,
+    count: Number(body.count ?? 1),
     enabled: body.enabled,
     chatId: body.chatId ?? null,
   }).where(eq(reminderSchedules.id, id)).run()
