@@ -8,6 +8,7 @@ When given a piece of text, you will:
 2. Extract the author if present (for quotes)
 3. Suggest 3-5 concise tags that capture the theme, topic, or mood
 4. Generate a short title (max 8 words) summarizing the content
+5. Generate a notification summary: if the content is short (under 160 chars), use the content itself (cleaned up); if long, distill the core insight into 1-2 sentences max
 
 Definitions:
 - Quote: A memorable statement attributed to a specific person
@@ -19,10 +20,11 @@ Definitions:
 
 Respond ONLY with valid JSON in this exact shape:
 {
-  "type": "Quote" | "Affirmation" | "Story" | "Thought",
+  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit",
   "author": string | null,
   "tags": string[],
-  "title": string
+  "title": string,
+  "summary": string
 }
 
 No markdown, no explanation, only the JSON object.`
@@ -32,6 +34,7 @@ export async function classifyItem(body: string): Promise<{
   author: string | null
   tags: string[]
   title: string
+  summary: string
 }> {
   const response = await client.messages.create({
     model: 'claude-haiku-4-5',

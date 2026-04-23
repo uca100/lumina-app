@@ -8,6 +8,7 @@ export const items = sqliteTable('items', {
   source: text('source', { enum: ['manual', 'whatsapp', 'email', 'voice', 'telegram', 'shortcut'] }).notNull().default('manual'),
   author: text('author'),
   tags: text('tags').notNull().default('[]'),
+  summary: text('summary'),
   notionId: text('notion_id'),
   synced: integer('synced').notNull().default(0),
   createdAt: integer('created_at').notNull(),

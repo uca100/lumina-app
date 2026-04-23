@@ -28,22 +28,25 @@ export async function classifyAndSave(
   let author: string | null
   let tags: string[]
   let title: string | null
+  let summary: string | null
 
   if (presetType) {
     type = presetType
     author = meta?.author ?? null
     tags = meta?.tags ?? []
     title = meta?.title ?? null
+    summary = null
   } else {
     const classified = await classifyItem(body)
     type = classified.type
     author = meta?.author ?? classified.author
     tags = [...new Set([...(meta?.tags ?? []), ...classified.tags])]
     title = meta?.title ?? classified.title
+    summary = classified.summary
   }
 
   db().insert(items).values({
-    id, title, body: normalizedBody, type, source, author,
+    id, title, body: normalizedBody, type, source, author, summary,
     tags: JSON.stringify(tags),
     synced: 0,
     createdAt: now,

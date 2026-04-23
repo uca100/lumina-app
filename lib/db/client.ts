@@ -24,6 +24,7 @@ function ensureSchema(sqlite: Database.Database) {
     `ALTER TABLE reminder_schedules ADD COLUMN item_id TEXT`,
     `ALTER TABLE reminder_schedules ADD COLUMN mode TEXT NOT NULL DEFAULT 'fixed'`,
     `ALTER TABLE reminder_schedules ADD COLUMN count INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE items ADD COLUMN summary TEXT`,
   ]) {
     try { sqlite.exec(sql) } catch { /* column already exists */ }
   }

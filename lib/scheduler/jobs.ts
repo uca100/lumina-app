@@ -23,10 +23,9 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, cha
     pick = all[Math.floor(Math.random() * all.length)]
   }
 
-  const tags = JSON.parse(pick.tags) as string[]
+  const notifBody = pick.summary ?? pick.body
   const lines = [
-    ...(pick.title ? [`*${pick.title}*`] : []),
-    pick.body,
+    notifBody,
     ...(pick.author ? [`— ${pick.author}`] : []),
   ]
   const text = lines.join('\n')

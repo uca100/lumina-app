@@ -3,6 +3,20 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased] - 2026-04-23
+
+### Added
+- `summary` field on all items: a concise 1-2 sentence version of the content, used in ntfy notifications instead of the full body
+- AI classifier now generates a `summary` on every new item: short content (< 160 chars) uses the content itself; long content gets a distilled insight
+- Backfilled all 22 existing items with hand-crafted summaries
+- DB auto-migration adds `summary TEXT` column on startup (idempotent)
+
+### Changed
+- Notifications now send `summary` (or `body` as fallback) instead of the full body — removed redundant bold title from notification text
+- `classifyItem` return type extended with `summary: string`
+
+---
+
 ## [Unreleased] - 2026-04-22 (session 3)
 
 ### Added

@@ -51,6 +51,7 @@ var items = (0, import_sqlite_core.sqliteTable)("items", {
   source: (0, import_sqlite_core.text)("source", { enum: ["manual", "whatsapp", "email", "voice", "telegram", "shortcut"] }).notNull().default("manual"),
   author: (0, import_sqlite_core.text)("author"),
   tags: (0, import_sqlite_core.text)("tags").notNull().default("[]"),
+  summary: (0, import_sqlite_core.text)("summary"),
   notionId: (0, import_sqlite_core.text)("notion_id"),
   synced: (0, import_sqlite_core.integer)("synced").notNull().default(0),
   createdAt: (0, import_sqlite_core.integer)("created_at").notNull(),
@@ -97,7 +98,8 @@ function ensureSchema(sqlite) {
   for (const sql of [
     `ALTER TABLE reminder_schedules ADD COLUMN item_id TEXT`,
     `ALTER TABLE reminder_schedules ADD COLUMN mode TEXT NOT NULL DEFAULT 'fixed'`,
-    `ALTER TABLE reminder_schedules ADD COLUMN count INTEGER NOT NULL DEFAULT 1`
+    `ALTER TABLE reminder_schedules ADD COLUMN count INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE items ADD COLUMN summary TEXT`
   ]) {
     try {
       sqlite.exec(sql);
@@ -303,6 +305,7 @@ When given a piece of text, you will:
 2. Extract the author if present (for quotes)
 3. Suggest 3-5 concise tags that capture the theme, topic, or mood
 4. Generate a short title (max 8 words) summarizing the content
+5. Generate a notification summary: if the content is short (under 160 chars), use the content itself (cleaned up); if long, distill the core insight into 1-2 sentences max
 
 Definitions:
 - Quote: A memorable statement attributed to a specific person
@@ -314,10 +317,11 @@ Definitions:
 
 Respond ONLY with valid JSON in this exact shape:
 {
-  "type": "Quote" | "Affirmation" | "Story" | "Thought",
+  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit",
   "author": string | null,
   "tags": string[],
-  "title": string
+  "title": string,
+  "summary": string
 }
 
 No markdown, no explanation, only the JSON object.`;
@@ -354,17 +358,20 @@ async function classifyAndSave(body, source, meta) {
   let author;
   let tags;
   let title;
+  let summary;
   if (presetType) {
     type = presetType;
     author = meta?.author ?? null;
     tags = meta?.tags ?? [];
     title = meta?.title ?? null;
+    summary = null;
   } else {
     const classified = await classifyItem(body);
     type = classified.type;
     author = meta?.author ?? classified.author;
     tags = [.../* @__PURE__ */ new Set([...meta?.tags ?? [], ...classified.tags])];
     title = meta?.title ?? classified.title;
+    summary = classified.summary;
   }
   db().insert(items).values({
     id,
@@ -373,6 +380,7 @@ async function classifyAndSave(body, source, meta) {
     type,
     source,
     author,
+    summary,
     tags: JSON.stringify(tags),
     synced: 0,
     createdAt: now,
@@ -493,10 +501,9 @@ async function fireReminder(schedule, chatId) {
     if (!all.length) return;
     pick = all[Math.floor(Math.random() * all.length)];
   }
-  const tags = JSON.parse(pick.tags);
+  const notifBody = pick.summary ?? pick.body;
   const lines = [
-    ...pick.title ? [`*${pick.title}*`] : [],
-    pick.body,
+    notifBody,
     ...pick.author ? [`\u2014 ${pick.author}`] : []
   ];
   const text2 = lines.join("\n");
