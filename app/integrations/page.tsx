@@ -10,6 +10,7 @@ interface Config {
   baseUrl: string
   ntfyTopic: string
   telegramBotUsername: string | null
+  version: string
 }
 
 export default function IntegrationsPage() {
@@ -322,7 +323,7 @@ if (drafts.length === 0) {
         </div>
 
         <div className="mt-20 text-center">
-          <p className="text-zinc-700 text-xs">Lumina v0.3.0 • iPhone Integration Guide</p>
+          <p className="text-zinc-700 text-xs">Lumina v{config.version} • iPhone Integration Guide</p>
         </div>
       </main>
     </div>

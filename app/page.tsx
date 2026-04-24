@@ -82,7 +82,7 @@ export default function FeedPage() {
             <span className="text-amber-500 text-xl">✦</span>
             <h1 className="font-serif text-2xl font-bold text-white tracking-tight">Lumina</h1>
             <span className="text-zinc-600 text-sm hidden sm:block">/ your inspiration</span>
-            {version && <span className="text-[10px] text-zinc-700 font-mono hidden sm:block">{version}</span>}
+            {version && <span className="text-[10px] text-zinc-500 font-mono bg-zinc-800/60 px-1.5 py-0.5 rounded">{version}</span>}
           </div>
           <div className="flex gap-2">
             <button

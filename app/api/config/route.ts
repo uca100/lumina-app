@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import pkg from '@/package.json'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,5 +24,6 @@ export async function GET() {
     baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'https://myweb.tail075174.ts.net',
     ntfyTopic: process.env.NTFY_TOPIC ?? '',
     telegramBotUsername,
+    version: pkg.version,
   })
 }
