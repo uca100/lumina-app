@@ -30,15 +30,19 @@ export async function classifyAndSave(
   let title: string | null
   let summary: string | null
 
-  if (presetType) {
+  const hasPresetTags = meta?.tags && meta.tags.length > 0
+
+  if (presetType && hasPresetTags) {
+    // Fully specified by caller — skip AI
     type = presetType
     author = meta?.author ?? null
-    tags = meta?.tags ?? []
+    tags = meta.tags!
     title = meta?.title ?? null
     summary = null
   } else {
+    // Always run AI for tags and summary; preset type/author/title override
     const classified = await classifyItem(body)
-    type = classified.type
+    type = presetType ?? classified.type
     author = meta?.author ?? classified.author
     tags = [...new Set([...(meta?.tags ?? []), ...classified.tags])]
     title = meta?.title ?? classified.title

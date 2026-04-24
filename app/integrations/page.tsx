@@ -9,7 +9,7 @@ interface Config {
   emailUser: string
   baseUrl: string
   ntfyTopic: string
-  telegramBotToken: boolean
+  telegramBotUsername: string | null
 }
 
 export default function IntegrationsPage() {
@@ -83,16 +83,36 @@ export default function IntegrationsPage() {
               </div>
             </div>
 
-            <div className="space-y-4 text-zinc-300 text-sm leading-relaxed">
-              <p><strong>To Save:</strong> Just send a message, link, or photo to your Lumina Bot.</p>
-              <p><strong>To Get Reminders:</strong> Lumina will message you here automatically.</p>
-              
-              <button 
+            <div className="space-y-5 text-zinc-300 text-sm leading-relaxed">
+              <ol className="space-y-3 list-none">
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-zinc-700 text-white text-xs flex items-center justify-center font-bold">1</span>
+                  <span>
+                    Click <strong>Link Bot</strong> below to register the webhook with Telegram.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-zinc-700 text-white text-xs flex items-center justify-center font-bold">2</span>
+                  <span>
+                    {config.telegramBotUsername ? (
+                      <>Open <a href={`https://t.me/${config.telegramBotUsername}`} target="_blank" rel="noreferrer" className="text-[#0088cc] font-mono font-bold hover:underline">@{config.telegramBotUsername}</a> on Telegram and send any message.</>
+                    ) : (
+                      <>Open your bot on Telegram and send any message to activate it.</>
+                    )}
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-zinc-700 text-white text-xs flex items-center justify-center font-bold">3</span>
+                  <span>Done — Lumina will save messages you send and deliver reminders here.</span>
+                </li>
+              </ol>
+
+              <button
                 onClick={setupTelegram}
                 disabled={registering}
                 className="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors disabled:opacity-50"
               >
-                {registering ? 'Connecting...' : 'Click to Link Telegram Bot'}
+                {registering ? 'Connecting...' : 'Link Bot'}
               </button>
               {regResult && <p className="text-center text-xs font-mono text-amber-500">{regResult}</p>}
             </div>

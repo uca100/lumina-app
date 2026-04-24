@@ -3,6 +3,23 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased] - 2026-04-24
+
+### Added
+- Telegram linking: integrations page now fetches and displays the bot username (@botname) with a direct t.me link and numbered step-by-step setup instructions
+- Config API exposes `telegramBotUsername` via a live call to Telegram's `getMe`
+
+### Fixed
+- Items from Drafts with a preset type but no tags were skipping AI entirely — now AI always runs for tags and summary; preset type/author/title still override AI output
+- Tags from Drafts actions now always populated (either from AI or explicit tags in payload)
+
+### Changed
+- AI system prompt: enforced a controlled tag vocabulary (60+ canonical tags across 8 categories), lowercase-only, no type/author names as tags, deduplication rules
+- Title generation: max 7 words, no leading articles
+- Summary: must not restate the title; short content (< 180 chars) used verbatim
+
+---
+
 ## [Unreleased] - 2026-04-23
 
 ### Added
