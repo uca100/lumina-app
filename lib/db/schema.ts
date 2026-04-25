@@ -4,7 +4,7 @@ export const items = sqliteTable('items', {
   id: text('id').primaryKey(),
   title: text('title'),
   body: text('body').notNull(),
-  type: text('type', { enum: ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'] }).notNull().default('Thought'),
+  type: text('type', { enum: ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] }).notNull().default('Thought'),
   source: text('source', { enum: ['manual', 'whatsapp', 'email', 'voice', 'telegram', 'shortcut'] }).notNull().default('manual'),
   author: text('author'),
   tags: text('tags').notNull().default('[]'),

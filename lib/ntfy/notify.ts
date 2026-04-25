@@ -7,6 +7,7 @@ const TYPE_EMOJI: Record<string, string> = {
   Thought: 'thought_balloon',
   Lesson: 'mortar_board',
   Habit: 'seedling',
+  Pattern: 'diamond_shape_with_a_dot_inside',
 }
 
 export async function sendNtfy(message: string, title?: string, type?: string) {

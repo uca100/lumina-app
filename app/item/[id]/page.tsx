@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { TagBadge } from '@/components/TagBadge'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
 
-const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'] as const
+const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
 
 const TYPE_ACCENT: Record<string, string> = {
   Quote:       'from-sky-50 to-white border-sky-100',
@@ -15,6 +15,7 @@ const TYPE_ACCENT: Record<string, string> = {
   Thought:     'from-amber-50 to-white border-amber-100',
   Lesson:      'from-rose-50 to-white border-rose-100',
   Habit:       'from-teal-50 to-white border-teal-100',
+  Pattern:     'from-orange-50 to-white border-orange-100',
 }
 
 const TYPE_BADGE: Record<string, string> = {
@@ -24,13 +25,15 @@ const TYPE_BADGE: Record<string, string> = {
   Thought:     'text-amber-700 bg-amber-50 border-amber-200',
   Lesson:      'text-rose-700 bg-rose-50 border-rose-200',
   Habit:       'text-teal-700 bg-teal-50 border-teal-200',
+  Pattern:     'text-orange-700 bg-orange-50 border-orange-200',
 }
 
 export default function ItemPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [item, setItem] = useState<Item | null>(null)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(searchParams.get('edit') === 'true')
   const [form, setForm] = useState<Partial<Item>>({})
   const [tagInput, setTagInput] = useState('')
   const [saving, setSaving] = useState(false)
@@ -101,6 +104,9 @@ export default function ItemPage() {
             )}
             {editing && (
               <>
+                <button onClick={del} disabled={deleting} className="text-sm px-4 py-1.5 border border-red-200 rounded-full text-red-400 hover:bg-red-50 transition-all">
+                  {deleting ? '…' : 'Delete'}
+                </button>
                 <button onClick={() => setEditing(false)} className="text-sm px-4 py-1.5 border border-stone-200 rounded-full text-stone-500 hover:border-stone-300 transition-all">
                   Cancel
                 </button>

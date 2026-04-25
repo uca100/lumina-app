@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ItemCard, Item } from '@/components/ItemCard'
 
-const TYPES = ['', 'Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'] as const
+const TYPES = ['', 'Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
 
 const TYPE_ICONS: Record<string, string> = {
   '': '✦',
@@ -15,6 +15,7 @@ const TYPE_ICONS: Record<string, string> = {
   Thought: '◎',
   Lesson: '◆',
   Habit: '⬡',
+  Pattern: '◇',
 }
 
 export default function FeedPage() {
@@ -22,14 +23,19 @@ export default function FeedPage() {
   const [items, setItems] = useState<Item[]>([])
   const [q, setQ] = useState('')
   const [type, setType] = useState('')
+  const [tag, setTag] = useState('')
+  const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [shuffling, setShuffling] = useState(false)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillResult, setBackfillResult] = useState<string | null>(null)
   const [debouncedQ, setDebouncedQ] = useState('')
   const [version, setVersion] = useState('')
 
   useEffect(() => {
     fetch('/lumina/api/version').then(r => r.json()).then(d => setVersion(`v${d.version}`))
+    fetch('/lumina/api/items/tags').then(r => r.json()).then(setAllTags)
   }, [])
 
   useEffect(() => {
@@ -42,11 +48,12 @@ export default function FeedPage() {
     const params = new URLSearchParams()
     if (debouncedQ) params.set('q', debouncedQ)
     if (type) params.set('type', type)
+    if (tag) params.set('tag', tag)
     const res = await fetch(`/lumina/api/items?${params}`)
     const data = await res.json()
     setItems(data)
     setLoading(false)
-  }, [debouncedQ, type])
+  }, [debouncedQ, type, tag])
 
   useEffect(() => { fetchItems() }, [fetchItems])
 
@@ -64,6 +71,16 @@ export default function FeedPage() {
     setSyncing(true)
     await fetch('/lumina/api/sync', { method: 'POST' })
     setSyncing(false)
+    fetchItems()
+  }
+
+  async function backfillTags() {
+    setBackfilling(true)
+    setBackfillResult(null)
+    const res = await fetch('/lumina/api/items/backfill', { method: 'POST' })
+    const data = await res.json()
+    setBackfillResult(data.total === 0 ? 'All items already tagged' : `Tagged ${data.fixed} item${data.fixed !== 1 ? 's' : ''}${data.failed ? ` (${data.failed} failed)` : ''}`)
+    setBackfilling(false)
     fetchItems()
   }
 
@@ -100,6 +117,14 @@ export default function FeedPage() {
             >
               {syncing ? '⟳ Syncing…' : '⟳ Notion'}
             </button>
+            <button
+              onClick={backfillTags}
+              disabled={backfilling}
+              className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all disabled:opacity-40"
+              title="Re-classify items with no tags"
+            >
+              {backfilling ? '✦ Tagging…' : '✦ Fix tags'}
+            </button>
             <Link
               href="/reminders"
               className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all"
@@ -125,6 +150,13 @@ export default function FeedPage() {
       </header>
 
       <main className="relative max-w-3xl mx-auto px-6 py-8">
+
+        {backfillResult && (
+          <div className="mb-4 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2 flex justify-between items-center">
+            <span>{backfillResult}</span>
+            <button onClick={() => setBackfillResult(null)} className="text-zinc-600 hover:text-zinc-400 ml-4">✕</button>
+          </div>
+        )}
 
         {/* Search + filters */}
         <div className="mb-8 flex flex-col gap-3">
@@ -153,6 +185,28 @@ export default function FeedPage() {
               </button>
             ))}
           </div>
+
+          {allTags.length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pt-1 pb-0.5 -mx-1 px-1">
+              {tag && (
+                <button
+                  onClick={() => setTag('')}
+                  className="shrink-0 px-3 py-1 rounded-full text-xs border border-amber-500/60 bg-amber-500/15 text-amber-400 font-medium"
+                >
+                  #{tag} ✕
+                </button>
+              )}
+              {allTags.filter(({ tag: t }) => t !== tag).map(({ tag: t, count }) => (
+                <button
+                  key={t}
+                  onClick={() => setTag(t)}
+                  className="shrink-0 px-3 py-1 rounded-full text-xs border border-zinc-800 text-zinc-600 bg-zinc-900/40 hover:border-zinc-600 hover:text-zinc-400 transition-all"
+                >
+                  #{t} <span className="opacity-40 ml-0.5">{count}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -165,9 +219,9 @@ export default function FeedPage() {
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <div className="text-7xl font-serif text-zinc-800">"</div>
             <p className="text-zinc-500 text-center max-w-xs">
-              {q || type ? 'Nothing matches your search.' : 'Your collection is empty. Start capturing what moves you.'}
+              {q || type || tag ? 'Nothing matches your search.' : 'Your collection is empty. Start capturing what moves you.'}
             </p>
-            {!q && !type && (
+            {!q && !type && !tag && (
               <Link href="/capture" className="mt-2 text-sm text-amber-500 underline underline-offset-4 hover:text-amber-400">
                 Capture your first inspiration →
               </Link>
@@ -182,6 +236,7 @@ export default function FeedPage() {
                   key={item.id}
                   item={item}
                   onDeleted={(id) => setItems(items.filter(i => i.id !== id))}
+                  onTagClick={(t) => setTag(t)}
                 />
               ))}
             </div>

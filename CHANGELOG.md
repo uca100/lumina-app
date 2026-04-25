@@ -3,6 +3,26 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.6.0] - 2026-04-25
+
+### Added
+- **Pattern** category: new type for recurring themes and observed principles, with orange color scheme and ◇ icon; added to AI classifier, all type maps, Drafts scripts, ntfy emoji
+- **Tag filtering**: horizontal scrollable tag strip below type filters; click any tag in the strip or on a card to filter the feed; active tag shown as dismissable chip; filters stack with type + text search
+- `/api/items/tags` endpoint: returns all unique tags sorted by frequency with counts
+- `/api/items/backfill` endpoint: re-classifies all items with empty tags using AI; accessible via "✦ Fix tags" button in the feed header
+- Delete button now visible in edit mode on the item detail page
+
+### Fixed
+- Clicking "Edit" on a card now opens the item directly in edit mode (no double-click)
+- Duplicate prevention added to `POST /api/items` (CaptureForm path was missing the check)
+- AI classification now always runs on every insert — removed the "skip AI when type+tags preset" branch; ensures all items get standardized tags regardless of ingestion source
+- Drafts flush scripts updated to include `pattern` in TYPE_MAP
+
+### Changed
+- Tag cloud replaced with a single-line horizontal scroll strip (hides scrollbar, no wrapping)
+
+---
+
 ## [Unreleased] - 2026-04-24
 
 ### Added

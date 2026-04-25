@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 
 type Source = 'manual' | 'whatsapp' | 'email' | 'voice' | 'telegram' | 'shortcut'
 
-const VALID_TYPES = new Set(['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'])
+const VALID_TYPES = new Set(['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'])
 
 export async function classifyAndSave(
   body: string,
@@ -21,33 +21,22 @@ export async function classifyAndSave(
   const id = nanoid()
 
   const presetType = meta?.type && VALID_TYPES.has(meta.type)
-    ? meta.type as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
+    ? meta.type as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
     : null
 
-  let type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
+  let type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
   let author: string | null
   let tags: string[]
   let title: string | null
   let summary: string | null
 
-  const hasPresetTags = meta?.tags && meta.tags.length > 0
-
-  if (presetType && hasPresetTags) {
-    // Fully specified by caller — skip AI
-    type = presetType
-    author = meta?.author ?? null
-    tags = meta.tags!
-    title = meta?.title ?? null
-    summary = null
-  } else {
-    // Always run AI for tags and summary; preset type/author/title override
-    const classified = await classifyItem(body)
-    type = presetType ?? classified.type
-    author = meta?.author ?? classified.author
-    tags = [...new Set([...(meta?.tags ?? []), ...classified.tags])]
-    title = meta?.title ?? classified.title
-    summary = classified.summary
-  }
+  // Always run AI for standardized tags/summary; preset values override AI suggestions
+  const classified = await classifyItem(body)
+  type = presetType ?? classified.type
+  author = meta?.author ?? classified.author
+  tags = [...new Set([...(meta?.tags ?? []), ...classified.tags])]
+  title = meta?.title ?? classified.title
+  summary = classified.summary
 
   db().insert(items).values({
     id, title, body: normalizedBody, type, source, author, summary,

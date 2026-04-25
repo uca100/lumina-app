@@ -4,7 +4,7 @@ const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY })
 
 const SYSTEM_PROMPT = `You are a content classifier for a personal inspiration app called Lumina.
 When given a piece of text, you will:
-1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, or Habit
+1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, Habit, or Pattern
 2. Extract the author if present (for quotes)
 3. Choose 3–5 tags from the vocabulary below
 4. Generate a short title (max 7 words, no articles like "A" or "The" at start)
@@ -17,6 +17,7 @@ Definitions:
 - Thought: A personal reflection, idea, or insight
 - Lesson: A key takeaway, learning, or principle derived from experience
 - Habit: A routine, practice, or behavioral pattern worth building
+- Pattern: A recurring theme, structure, or principle observed across experience or knowledge
 
 ## Tag vocabulary (use ONLY these, all lowercase, pick the most specific fit):
 mindset, growth, resilience, identity, self-belief, confidence, courage, fear, ego, clarity
@@ -36,7 +37,7 @@ Rules for tags:
 
 Respond ONLY with valid JSON in this exact shape:
 {
-  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit",
+  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit" | "Pattern",
   "author": string | null,
   "tags": string[],
   "title": string,
@@ -46,7 +47,7 @@ Respond ONLY with valid JSON in this exact shape:
 No markdown, no explanation, only the JSON object.`
 
 export async function classifyItem(body: string): Promise<{
-  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
+  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
   author: string | null
   tags: string[]
   title: string

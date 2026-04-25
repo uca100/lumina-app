@@ -2,7 +2,7 @@
 
 interface TagBadgeProps {
   tag: string
-  onClick?: () => void
+  onClick?: (e: React.MouseEvent) => void
 }
 
 export function TagBadge({ tag, onClick }: TagBadgeProps) {

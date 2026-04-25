@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'] as const
+const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
 
 const TYPE_META: Record<string, { icon: string; color: string }> = {
   Quote:       { icon: '"',  color: 'border-sky-500 bg-sky-500/10 text-sky-300' },
@@ -12,6 +12,7 @@ const TYPE_META: Record<string, { icon: string; color: string }> = {
   Thought:     { icon: '◎', color: 'border-amber-500 bg-amber-500/10 text-amber-300' },
   Lesson:      { icon: '◆', color: 'border-rose-500 bg-rose-500/10 text-rose-300' },
   Habit:       { icon: '⬡', color: 'border-teal-500 bg-teal-500/10 text-teal-300' },
+  Pattern:     { icon: '◇', color: 'border-orange-500 bg-orange-500/10 text-orange-300' },
 }
 
 export function CaptureForm() {
@@ -105,7 +106,7 @@ export function CaptureForm() {
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder={type === 'Quote' ? 'Paste the quote here…' : type === 'Affirmation' ? 'Write your affirmation…' : type === 'Story' ? 'Tell the story…' : type === 'Lesson' ? 'What did you learn?' : type === 'Habit' ? 'Describe the habit or practice…' : "What's on your mind?"}
+            placeholder={type === 'Quote' ? 'Paste the quote here…' : type === 'Affirmation' ? 'Write your affirmation…' : type === 'Story' ? 'Tell the story…' : type === 'Lesson' ? 'What did you learn?' : type === 'Habit' ? 'Describe the habit or practice…' : type === 'Pattern' ? 'Describe the pattern you noticed…' : "What's on your mind?"}
             rows={7}
             className={`w-full bg-zinc-900/60 border border-zinc-700/60 backdrop-blur-sm rounded-2xl py-5 text-white text-lg leading-relaxed resize-none focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/20 placeholder:text-zinc-600 font-serif transition-all ${type === 'Quote' ? 'px-6 pt-12' : 'px-5'}`}
             autoFocus

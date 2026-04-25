@@ -9,7 +9,7 @@ export interface Item {
   id: string
   title: string | null
   body: string
-  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
+  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
   source: string
   author: string | null
   tags: string[]
@@ -18,15 +18,16 @@ export interface Item {
 }
 
 const TYPE_CONFIG: Record<string, { label: string; border: string; badge: string; quote: boolean }> = {
-  Quote:       { label: 'Quote',       border: 'border-l-sky-500/60',     badge: 'text-sky-400 bg-sky-500/10 border-sky-500/30',         quote: true  },
+  Quote:       { label: 'Quote',       border: 'border-l-sky-500/60',     badge: 'text-sky-400 bg-sky-500/10 border-sky-500/30',             quote: true  },
   Affirmation: { label: 'Affirmation', border: 'border-l-emerald-500/60', badge: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30', quote: false },
-  Story:       { label: 'Story',       border: 'border-l-violet-500/60',  badge: 'text-violet-400 bg-violet-500/10 border-violet-500/30', quote: false },
-  Thought:     { label: 'Thought',     border: 'border-l-amber-500/60',   badge: 'text-amber-400 bg-amber-500/10 border-amber-500/30',   quote: false },
-  Lesson:      { label: 'Lesson',      border: 'border-l-rose-500/60',    badge: 'text-rose-400 bg-rose-500/10 border-rose-500/30',      quote: false },
-  Habit:       { label: 'Habit',       border: 'border-l-teal-500/60',    badge: 'text-teal-400 bg-teal-500/10 border-teal-500/30',      quote: false },
+  Story:       { label: 'Story',       border: 'border-l-violet-500/60',  badge: 'text-violet-400 bg-violet-500/10 border-violet-500/30',    quote: false },
+  Thought:     { label: 'Thought',     border: 'border-l-amber-500/60',   badge: 'text-amber-400 bg-amber-500/10 border-amber-500/30',       quote: false },
+  Lesson:      { label: 'Lesson',      border: 'border-l-rose-500/60',    badge: 'text-rose-400 bg-rose-500/10 border-rose-500/30',          quote: false },
+  Habit:       { label: 'Habit',       border: 'border-l-teal-500/60',    badge: 'text-teal-400 bg-teal-500/10 border-teal-500/30',          quote: false },
+  Pattern:     { label: 'Pattern',     border: 'border-l-orange-500/60',  badge: 'text-orange-400 bg-orange-500/10 border-orange-500/30',    quote: false },
 }
 
-export function ItemCard({ item, onDeleted }: { item: Item; onDeleted?: (id: string) => void }) {
+export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDeleted?: (id: string) => void; onTagClick?: (tag: string) => void }) {
   const router = useRouter()
   const [deleting, setDeleting] = useState(false)
   const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.Thought
@@ -58,7 +59,7 @@ export function ItemCard({ item, onDeleted }: { item: Item; onDeleted?: (id: str
             </span>
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.preventDefault()}>
               <Link
-                href={`/item/${item.id}`}
+                href={`/item/${item.id}?edit=true`}
                 onClick={(e) => e.stopPropagation()}
                 className="text-[11px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-colors"
               >
@@ -93,7 +94,13 @@ export function ItemCard({ item, onDeleted }: { item: Item; onDeleted?: (id: str
           {attribution && (
             <span className="text-[11px] text-zinc-600 italic mr-1">— {attribution}</span>
           )}
-          {item.tags.map((tag) => <TagBadge key={tag} tag={tag} />)}
+          {item.tags.map((tag) => (
+            <TagBadge
+              key={tag}
+              tag={tag}
+              onClick={onTagClick ? (e) => { e.preventDefault(); e.stopPropagation(); onTagClick(tag) } : undefined}
+            />
+          ))}
         </div>
       </article>
     </Link>

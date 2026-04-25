@@ -197,7 +197,7 @@ export default function IntegrationsPage() {
                   <p className="text-zinc-500 mb-2 uppercase tracking-widest text-[10px]">Action 1 — Send current draft immediately</p>
                   <pre className="bg-black p-4 rounded-xl border border-zinc-800 text-[10px] text-amber-200 overflow-x-auto whitespace-pre-wrap">{`const LUMINA_URL = "${config.baseUrl}/lumina/api/ingest/shortcut";
 const INGEST_KEY = "${config.ingestKey}";
-const TYPE_MAP = { quote: "Quote", affirmation: "Affirmation", story: "Story", thought: "Thought", lesson: "Lesson", habit: "Habit" };
+const TYPE_MAP = { quote: "Quote", affirmation: "Affirmation", story: "Story", thought: "Thought", lesson: "Lesson", habit: "Habit", pattern: "Pattern" };
 const THEMATIC = ["lessons", "inspiring"];
 
 // Read type + thematic tags from the draft's tags
@@ -231,11 +231,11 @@ if (response.success) {
                 </div>
                 <div>
                   <p className="text-zinc-500 mb-2 uppercase tracking-widest text-[10px]">Action 2 — Flush all drafts tagged &quot;lumina&quot;</p>
-                  <p className="text-[10px] text-zinc-600 mb-3 leading-relaxed">Tags control how items are classified. Add <code className="text-zinc-400">quote</code>, <code className="text-zinc-400">affirmation</code>, <code className="text-zinc-400">story</code>, <code className="text-zinc-400">thought</code>, <code className="text-zinc-400">lesson</code>, or <code className="text-zinc-400">habit</code> to skip AI and set the type directly. Add <code className="text-zinc-400">lessons</code> or <code className="text-zinc-400">inspiring</code> to tag the item. Only <code className="text-zinc-400">lumina</code>? AI handles everything.</p>
+                  <p className="text-[10px] text-zinc-600 mb-3 leading-relaxed">Tags control how items are classified. Add <code className="text-zinc-400">quote</code>, <code className="text-zinc-400">affirmation</code>, <code className="text-zinc-400">story</code>, <code className="text-zinc-400">thought</code>, <code className="text-zinc-400">lesson</code>, <code className="text-zinc-400">habit</code>, or <code className="text-zinc-400">pattern</code> to set the type directly. Add <code className="text-zinc-400">lessons</code> or <code className="text-zinc-400">inspiring</code> to tag the item. Only <code className="text-zinc-400">lumina</code>? AI handles everything.</p>
                   <pre className="bg-black p-4 rounded-xl border border-zinc-800 text-[10px] text-amber-200 overflow-x-auto whitespace-pre-wrap">{`const LUMINA_URL = "${config.baseUrl}/lumina/api/ingest/shortcut";
 const INGEST_KEY = "${config.ingestKey}";
 const TAG = "lumina";
-const TYPE_MAP = { quote: "Quote", affirmation: "Affirmation", story: "Story", thought: "Thought", lesson: "Lesson", habit: "Habit" };
+const TYPE_MAP = { quote: "Quote", affirmation: "Affirmation", story: "Story", thought: "Thought", lesson: "Lesson", habit: "Habit", pattern: "Pattern" };
 const THEMATIC = ["lessons", "inspiring"];
 
 const drafts = Draft.query("", "inbox", [TAG]);
