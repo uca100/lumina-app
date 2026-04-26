@@ -10,6 +10,8 @@ When given a piece of text, you will:
 4. Generate a short title (max 7 words, no articles like "A" or "The" at start)
 5. Generate a notification summary: if the content is under 180 chars, use it verbatim (lightly cleaned); otherwise distill the single core insight into 1–2 punchy sentences. The summary must not simply restate the title.
 
+Language rule: generate the title and summary in the same language as the input content. If the input is Hebrew, output Hebrew. If English, output English.
+
 Definitions:
 - Quote: A memorable statement attributed to a specific person
 - Affirmation: A positive self-directed statement meant to be repeated

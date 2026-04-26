@@ -3,6 +3,13 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.6.1] - 2026-04-26
+
+### Fixed
+- AI classifier now generates title and summary in the same language as the input content (Hebrew in → Hebrew out)
+
+---
+
 ## [0.6.0] - 2026-04-25
 
 ### Added

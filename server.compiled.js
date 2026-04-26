@@ -47,7 +47,7 @@ var items = (0, import_sqlite_core.sqliteTable)("items", {
   id: (0, import_sqlite_core.text)("id").primaryKey(),
   title: (0, import_sqlite_core.text)("title"),
   body: (0, import_sqlite_core.text)("body").notNull(),
-  type: (0, import_sqlite_core.text)("type", { enum: ["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit"] }).notNull().default("Thought"),
+  type: (0, import_sqlite_core.text)("type", { enum: ["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit", "Pattern"] }).notNull().default("Thought"),
   source: (0, import_sqlite_core.text)("source", { enum: ["manual", "whatsapp", "email", "voice", "telegram", "shortcut"] }).notNull().default("manual"),
   author: (0, import_sqlite_core.text)("author"),
   tags: (0, import_sqlite_core.text)("tags").notNull().default("[]"),
@@ -301,11 +301,13 @@ var import_sdk = __toESM(require("@anthropic-ai/sdk"));
 var client = new import_sdk.default({ apiKey: process.env.CLAUDE_API_KEY });
 var SYSTEM_PROMPT = `You are a content classifier for a personal inspiration app called Lumina.
 When given a piece of text, you will:
-1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, or Habit
+1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, Habit, or Pattern
 2. Extract the author if present (for quotes)
-3. Suggest 3-5 concise tags that capture the theme, topic, or mood
-4. Generate a short title (max 8 words) summarizing the content
-5. Generate a notification summary: if the content is short (under 160 chars), use the content itself (cleaned up); if long, distill the core insight into 1-2 sentences max
+3. Choose 3\u20135 tags from the vocabulary below
+4. Generate a short title (max 7 words, no articles like "A" or "The" at start)
+5. Generate a notification summary: if the content is under 180 chars, use it verbatim (lightly cleaned); otherwise distill the single core insight into 1\u20132 punchy sentences. The summary must not simply restate the title.
+
+Language rule: generate the title and summary in the same language as the input content. If the input is Hebrew, output Hebrew. If English, output English.
 
 Definitions:
 - Quote: A memorable statement attributed to a specific person
@@ -314,10 +316,27 @@ Definitions:
 - Thought: A personal reflection, idea, or insight
 - Lesson: A key takeaway, learning, or principle derived from experience
 - Habit: A routine, practice, or behavioral pattern worth building
+- Pattern: A recurring theme, structure, or principle observed across experience or knowledge
+
+## Tag vocabulary (use ONLY these, all lowercase, pick the most specific fit):
+mindset, growth, resilience, identity, self-belief, confidence, courage, fear, ego, clarity
+gratitude, presence, awareness, acceptance, peace, joy, love, pain, grief, loneliness
+stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox
+discipline, consistency, focus, habits, rest, energy, health, sleep
+creativity, learning, reading, writing, thinking, curiosity, excellence, mastery
+leadership, communication, relationships, trust, kindness, family, community
+money, career, ambition, risk, failure, success, work, productivity
+mortality, time, urgency, patience, change, uncertainty, faith, spirituality
+
+Rules for tags:
+- Never use the type name (quote, lesson, etc.) as a tag
+- Never use the author's name as a tag
+- Do not repeat similar concepts (e.g., pick one of resilience/strength/perseverance)
+- Prefer specific over generic (e.g., "stoicism" over "philosophy" if clearly stoic)
 
 Respond ONLY with valid JSON in this exact shape:
 {
-  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit",
+  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit" | "Pattern",
   "author": string | null,
   "tags": string[],
   "title": string,
@@ -346,7 +365,7 @@ async function classifyItem(body) {
 // lib/ingest/save.ts
 var import_nanoid2 = require("nanoid");
 var import_drizzle_orm2 = require("drizzle-orm");
-var VALID_TYPES = /* @__PURE__ */ new Set(["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit"]);
+var VALID_TYPES = /* @__PURE__ */ new Set(["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit", "Pattern"]);
 async function classifyAndSave(body, source, meta) {
   const normalizedBody = body.trim();
   const existing = db().select().from(items).where((0, import_drizzle_orm2.eq)(items.body, normalizedBody)).get();
@@ -359,20 +378,12 @@ async function classifyAndSave(body, source, meta) {
   let tags;
   let title;
   let summary;
-  if (presetType) {
-    type = presetType;
-    author = meta?.author ?? null;
-    tags = meta?.tags ?? [];
-    title = meta?.title ?? null;
-    summary = null;
-  } else {
-    const classified = await classifyItem(body);
-    type = classified.type;
-    author = meta?.author ?? classified.author;
-    tags = [.../* @__PURE__ */ new Set([...meta?.tags ?? [], ...classified.tags])];
-    title = meta?.title ?? classified.title;
-    summary = classified.summary;
-  }
+  const classified = await classifyItem(body);
+  type = presetType ?? classified.type;
+  author = meta?.author ?? classified.author;
+  tags = [.../* @__PURE__ */ new Set([...meta?.tags ?? [], ...classified.tags])];
+  title = meta?.title ?? classified.title;
+  summary = classified.summary;
   db().insert(items).values({
     id,
     title,
@@ -466,7 +477,8 @@ var TYPE_EMOJI = {
   Story: "books",
   Thought: "thought_balloon",
   Lesson: "mortar_board",
-  Habit: "seedling"
+  Habit: "seedling",
+  Pattern: "diamond_shape_with_a_dot_inside"
 };
 async function sendNtfy(message, title, type) {
   const topic = process.env.NTFY_TOPIC;
