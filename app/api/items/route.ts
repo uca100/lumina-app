@@ -11,12 +11,14 @@ export async function GET(req: NextRequest) {
   const q = searchParams.get('q') ?? ''
   const type = searchParams.get('type') ?? ''
   const tag = searchParams.get('tag') ?? ''
+  const pinned = searchParams.get('pinned') ?? ''
 
   const database = db()
   const conditions = []
   if (q) conditions.push(like(items.body, `%${q}%`))
   if (type) conditions.push(eq(items.type, type as ItemType))
   if (tag) conditions.push(like(items.tags, `%"${tag}"%`))
+  if (pinned === '1') conditions.push(eq(items.pinned, 1))
 
   const rows = conditions.length
     ? database.select().from(items).where(and(...conditions)).orderBy(desc(items.createdAt)).limit(100).all()

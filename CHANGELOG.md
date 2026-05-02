@@ -3,6 +3,21 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.7.1] - 2026-05-02
+
+### Added
+- Affirmations settings page (`/affirmations/settings`): manage daily set, reorder with ↑↓, daily notification time picker, random pool view — all in one place
+- Daily notification can be set directly from affirmations settings (no need to go to Reminders page)
+- Random Pool section shows non-pinned Affirmation items feeding "Today's Pick"
+- `GET /api/items?pinned=1` filter — daily set now shows all pinned items regardless of type (fixes Pattern/Quote/etc. not appearing)
+- `GET/POST /api/affirmations/order` — stores display order of daily set in DB
+
+### Fixed
+- Daily affirmations page was filtering to `type=Affirmation` only — any other type (Pattern, Quote, etc.) pinned as daily was invisible
+- `NEXT_PUBLIC_BASE_URL` now set on pi5 so scheduled reminder notifications include the full clickable deep link
+
+---
+
 ## [0.7.0] - 2026-05-02
 
 ### Added
