@@ -126,6 +126,13 @@ export default function FeedPage() {
               {backfilling ? '✦ Tagging…' : '✦ Fix tags'}
             </button>
             <Link
+              href="/affirmations"
+              className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-emerald-500/50 hover:text-emerald-400 transition-all"
+              title="Affirmations"
+            >
+              ✿
+            </Link>
+            <Link
               href="/reminders"
               className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all"
               title="Reminders"

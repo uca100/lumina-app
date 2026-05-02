@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { TagBadge } from '@/components/TagBadge'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
+import { isRTL } from '@/lib/utils/rtl'
 
 const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
 
@@ -81,6 +82,8 @@ export default function ItemPage() {
 
   const accent = TYPE_ACCENT[item.type] ?? TYPE_ACCENT.Thought
   const badge = TYPE_BADGE[item.type] ?? TYPE_BADGE.Thought
+  const titleRTL = item.title ? isRTL(item.title) : false
+  const bodyRTL = isRTL(item.body)
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #fdf8f0 0%, #f5f0e8 50%, #ede8df 100%)' }}>
@@ -138,10 +141,18 @@ export default function ItemPage() {
               )}
 
               {item.title && (
-                <h2 className="font-serif text-3xl font-bold text-stone-800 mb-5 leading-tight">{item.title}</h2>
+                <h2
+                  dir={titleRTL ? 'rtl' : 'ltr'}
+                  className={`font-serif text-3xl font-bold text-stone-800 mb-5 leading-tight${titleRTL ? ' text-right rtl-text' : ''}`}
+                >
+                  {item.title}
+                </h2>
               )}
 
-              <p className={`text-stone-700 leading-relaxed mb-5 ${item.type === 'Quote' ? 'font-serif text-xl italic' : 'text-lg'}`}>
+              <p
+                dir={bodyRTL ? 'rtl' : 'ltr'}
+                className={`text-stone-700 leading-relaxed mb-5 ${item.type === 'Quote' ? 'font-serif text-xl italic' : 'text-lg'}${bodyRTL ? ' text-right rtl-text' : ''}`}
+              >
                 {item.body}
               </p>
 
@@ -207,6 +218,18 @@ export default function ItemPage() {
                 />
               </div>
             )}
+
+            <div>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!form.pinned}
+                  onChange={(e) => setForm({ ...form, pinned: e.target.checked ? 1 : 0 })}
+                  className="w-4 h-4 rounded border-stone-300 accent-emerald-500"
+                />
+                <span className="text-sm text-stone-600">Pin as daily affirmation</span>
+              </label>
+            </div>
 
             <div>
               <label className="block text-[10px] text-stone-400 mb-1.5 uppercase tracking-widest">Tags</label>

@@ -52,6 +52,7 @@ var items = (0, import_sqlite_core.sqliteTable)("items", {
   author: (0, import_sqlite_core.text)("author"),
   tags: (0, import_sqlite_core.text)("tags").notNull().default("[]"),
   summary: (0, import_sqlite_core.text)("summary"),
+  pinned: (0, import_sqlite_core.integer)("pinned").notNull().default(0),
   notionId: (0, import_sqlite_core.text)("notion_id"),
   synced: (0, import_sqlite_core.integer)("synced").notNull().default(0),
   createdAt: (0, import_sqlite_core.integer)("created_at").notNull(),
@@ -99,7 +100,8 @@ function ensureSchema(sqlite) {
     `ALTER TABLE reminder_schedules ADD COLUMN item_id TEXT`,
     `ALTER TABLE reminder_schedules ADD COLUMN mode TEXT NOT NULL DEFAULT 'fixed'`,
     `ALTER TABLE reminder_schedules ADD COLUMN count INTEGER NOT NULL DEFAULT 1`,
-    `ALTER TABLE items ADD COLUMN summary TEXT`
+    `ALTER TABLE items ADD COLUMN summary TEXT`,
+    `ALTER TABLE items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`
   ]) {
     try {
       sqlite.exec(sql);
@@ -480,7 +482,7 @@ var TYPE_EMOJI = {
   Habit: "seedling",
   Pattern: "diamond_shape_with_a_dot_inside"
 };
-async function sendNtfy(message, title, type) {
+async function sendNtfy(message, title, type, clickUrl) {
   const topic = process.env.NTFY_TOPIC;
   if (!topic) return;
   const tag = (type && TYPE_EMOJI[type]) ?? "sparkles";
@@ -491,7 +493,8 @@ async function sendNtfy(message, title, type) {
       "Priority": "default",
       "Tags": tag,
       "Content-Type": "text/plain",
-      "Markdown": "yes"
+      "Markdown": "yes",
+      ...clickUrl ? { "Click": clickUrl } : {}
     },
     body: message
   });
@@ -520,7 +523,9 @@ async function fireReminder(schedule, chatId) {
   ];
   const text2 = lines.join("\n");
   if (process.env.NTFY_TOPIC) {
-    await sendNtfy(text2, pick.title ?? void 0, pick.type ?? void 0);
+    const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+    const clickUrl = pick.type === "Affirmation" ? `${baseUrl}/lumina/affirmations` : `${baseUrl}/lumina/item/${pick.id}`;
+    await sendNtfy(text2, pick.title ?? void 0, pick.type ?? void 0, clickUrl);
   } else if (chatId) {
     await sendMessage(chatId, text2);
   }

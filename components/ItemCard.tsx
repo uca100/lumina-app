@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { TagBadge } from './TagBadge'
+import { isRTL } from '@/lib/utils/rtl'
 
 export interface Item {
   id: string
@@ -14,6 +15,7 @@ export interface Item {
   author: string | null
   tags: string[]
   synced: number
+  pinned: number
   createdAt: number
 }
 
@@ -33,6 +35,8 @@ export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDelete
   const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.Thought
   const preview = item.body.length > 220 ? item.body.slice(0, 220) + '…' : item.body
   const attribution = item.author || (item.source !== 'manual' ? item.source : null)
+  const titleRTL = item.title ? isRTL(item.title) : false
+  const bodyRTL = isRTL(item.body)
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault()
@@ -81,12 +85,18 @@ export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDelete
         )}
 
         {item.title && (
-          <h3 className="font-serif text-xl font-bold text-zinc-100 mb-2 leading-snug group-hover:text-amber-100 transition-colors">
+          <h3
+            dir={titleRTL ? 'rtl' : 'ltr'}
+            className={`font-serif text-xl font-bold text-zinc-100 mb-2 leading-snug group-hover:text-amber-100 transition-colors${titleRTL ? ' text-right rtl-text' : ''}`}
+          >
             {item.title}
           </h3>
         )}
 
-        <p className={`text-zinc-400 leading-relaxed mb-4 ${cfg.quote ? 'font-serif text-base italic text-zinc-300' : 'text-sm'}`}>
+        <p
+          dir={bodyRTL ? 'rtl' : 'ltr'}
+          className={`text-zinc-400 leading-relaxed mb-4 ${cfg.quote ? 'font-serif text-base italic text-zinc-300' : 'text-sm'}${bodyRTL ? ' text-right rtl-text' : ''}`}
+        >
           {preview}
         </p>
 

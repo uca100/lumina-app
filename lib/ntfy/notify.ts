@@ -10,7 +10,7 @@ const TYPE_EMOJI: Record<string, string> = {
   Pattern: 'diamond_shape_with_a_dot_inside',
 }
 
-export async function sendNtfy(message: string, title?: string, type?: string) {
+export async function sendNtfy(message: string, title?: string, type?: string, clickUrl?: string) {
   const topic = process.env.NTFY_TOPIC
   if (!topic) return
 
@@ -24,6 +24,7 @@ export async function sendNtfy(message: string, title?: string, type?: string) {
       'Tags': tag,
       'Content-Type': 'text/plain',
       'Markdown': 'yes',
+      ...(clickUrl ? { 'Click': clickUrl } : {}),
     },
     body: message,
   })

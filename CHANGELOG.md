@@ -3,6 +3,17 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.7.0] - 2026-05-02
+
+### Added
+- **Hebrew RTL support**: items with Hebrew text now render right-to-left with correct alignment and system font fallback in both the feed card and item detail view
+- **Affirmations page** (`/affirmations`): dedicated page with three sections — Today's Affirmation (date-seeded daily pick with "Show another" button), Daily Affirmations (pinned items), and More Affirmations
+- **Pin as daily affirmation**: checkbox in the item edit UI to mark any affirmation as a pinned daily one; stored in new `pinned` DB column (auto-migrated)
+- **ntfy click link**: push notifications now include a deep link — affirmation notifications open the Affirmations page, all other types open the item detail page
+- `✿` nav button in the feed header linking to the Affirmations page
+
+---
+
 ## [0.6.1] - 2026-04-26
 
 ### Fixed

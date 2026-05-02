@@ -7,3 +7,7 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+.rtl-text {
+  font-family: system-ui, sans-serif;
+}

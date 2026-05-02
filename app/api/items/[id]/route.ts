@@ -21,6 +21,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     type: body.type,
     author: body.author,
     tags: JSON.stringify(body.tags ?? []),
+    pinned: body.pinned ?? 0,
     synced: 0,
     updatedAt: now,
   }).where(eq(items.id, id)).run()
