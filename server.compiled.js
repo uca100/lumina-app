@@ -79,6 +79,8 @@ var reminderSchedules = (0, import_sqlite_core.sqliteTable)("reminder_schedules"
   count: (0, import_sqlite_core.integer)("count").notNull().default(1),
   enabled: (0, import_sqlite_core.integer)("enabled").notNull().default(1),
   chatId: (0, import_sqlite_core.integer)("chat_id"),
+  dailyFireMinutes: (0, import_sqlite_core.text)("daily_fire_minutes").notNull().default("[]"),
+  dailyFireDate: (0, import_sqlite_core.text)("daily_fire_date").notNull().default(""),
   createdAt: (0, import_sqlite_core.integer)("created_at").notNull()
 });
 
@@ -101,7 +103,9 @@ function ensureSchema(sqlite) {
     `ALTER TABLE reminder_schedules ADD COLUMN mode TEXT NOT NULL DEFAULT 'fixed'`,
     `ALTER TABLE reminder_schedules ADD COLUMN count INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE items ADD COLUMN summary TEXT`,
-    `ALTER TABLE items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`
+    `ALTER TABLE items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE reminder_schedules ADD COLUMN daily_fire_minutes TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE reminder_schedules ADD COLUMN daily_fire_date TEXT NOT NULL DEFAULT ''`
   ]) {
     try {
       sqlite.exec(sql);
@@ -504,7 +508,7 @@ async function sendNtfy(message, title, type, clickUrl) {
 }
 
 // lib/scheduler/jobs.ts
-var lastDailyRandomDate = "";
+var NTFY_MAX_BODY = 400;
 async function fireReminder(schedule, chatId) {
   let pick;
   if (schedule.itemId) {
@@ -516,7 +520,10 @@ async function fireReminder(schedule, chatId) {
     if (!all.length) return;
     pick = all[Math.floor(Math.random() * all.length)];
   }
-  const notifBody = pick.summary ?? pick.body;
+  let notifBody = pick.summary ?? pick.body;
+  if (notifBody.length > NTFY_MAX_BODY) {
+    notifBody = notifBody.slice(0, NTFY_MAX_BODY - 1) + "\u2026";
+  }
   const lines = [
     notifBody,
     ...pick.author ? [`\u2014 ${pick.author}`] : []
@@ -543,54 +550,48 @@ function randomMinutesInWindow(count, windowStart) {
   }
   return result;
 }
-function scheduleFireAt(minuteOfDay, schedule, chatId) {
-  const now = /* @__PURE__ */ new Date();
-  const fireAt = new Date(now);
-  fireAt.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0);
-  const msUntil = fireAt.getTime() - now.getTime();
-  if (msUntil <= 0) return false;
-  setTimeout(async () => {
-    try {
-      await fireReminder(schedule, chatId);
-    } catch (err) {
-      console.error("[Lumina] Reminder fire error:", schedule.id, err);
-    }
-  }, msUntil);
-  return true;
+function todayStr() {
+  return (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 }
 async function scheduleSingleDailyRandom(schedule) {
   const meta = db().select().from(syncMeta).where((0, import_drizzle_orm3.eq)(syncMeta.key, "telegram_chat_id")).get();
   const chatId = schedule.chatId ?? (meta ? Number(meta.value) : null);
   const now = /* @__PURE__ */ new Date();
+  const today = todayStr();
   const currentMinute = now.getHours() * 60 + now.getMinutes();
+  const fireMinutes = JSON.parse(schedule.dailyFireMinutes);
+  if (schedule.dailyFireDate === today && fireMinutes.length > 0) {
+    const pastDue = fireMinutes.filter((m2) => m2 <= currentMinute);
+    if (pastDue.length > 0) {
+      const remaining = fireMinutes.filter((m2) => m2 > currentMinute);
+      db().update(reminderSchedules).set({ dailyFireMinutes: JSON.stringify(remaining) }).where((0, import_drizzle_orm3.eq)(reminderSchedules.id, schedule.id)).run();
+      await fireReminder(schedule, chatId).catch((err) => console.error("[Lumina] Catch-up reminder error:", schedule.id, err));
+    }
+    return;
+  }
   const windowStart = Math.max(8 * 60, currentMinute + 1);
   const [minute] = randomMinutesInWindow(1, windowStart);
   if (minute === void 0) return;
-  if (scheduleFireAt(minute, schedule, chatId)) {
-    const h = Math.floor(minute / 60), m = minute % 60;
-    console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-  }
+  db().update(reminderSchedules).set({ dailyFireMinutes: JSON.stringify([minute]), dailyFireDate: today }).where((0, import_drizzle_orm3.eq)(reminderSchedules.id, schedule.id)).run();
+  const h = Math.floor(minute / 60), m = minute % 60;
+  console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
 }
 async function scheduleDailyScatter(schedule) {
-  const meta = db().select().from(syncMeta).where((0, import_drizzle_orm3.eq)(syncMeta.key, "telegram_chat_id")).get();
-  const chatId = schedule.chatId ?? (meta ? Number(meta.value) : null);
   const now = /* @__PURE__ */ new Date();
+  const today = todayStr();
   const currentMinute = now.getHours() * 60 + now.getMinutes();
+  const fireMinutes = JSON.parse(schedule.dailyFireMinutes);
+  if (schedule.dailyFireDate === today && fireMinutes.length > 0) {
+    return;
+  }
   const windowStart = Math.max(8 * 60, currentMinute + 1);
   const count = schedule.count ?? 1;
   const minutes = randomMinutesInWindow(count, windowStart);
-  let scheduled = 0;
-  for (const minute of minutes) {
-    if (scheduleFireAt(minute, schedule, chatId)) scheduled++;
-  }
-  if (scheduled > 0) {
-    console.log(`[Lumina] Daily scatter scheduled: ${schedule.label || schedule.id} \u2014 ${scheduled}\xD7 today`);
-  }
+  if (!minutes.length) return;
+  db().update(reminderSchedules).set({ dailyFireMinutes: JSON.stringify(minutes), dailyFireDate: today }).where((0, import_drizzle_orm3.eq)(reminderSchedules.id, schedule.id)).run();
+  console.log(`[Lumina] Daily scatter scheduled: ${schedule.label || schedule.id} \u2014 ${minutes.length}\xD7 today`);
 }
 function scheduleDailyRandoms() {
-  const today = (/* @__PURE__ */ new Date()).toDateString();
-  if (lastDailyRandomDate === today) return;
-  lastDailyRandomDate = today;
   const randoms = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)((0, import_drizzle_orm3.eq)(reminderSchedules.mode, "daily_random"), (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1))).all();
   for (const schedule of randoms) {
     scheduleSingleDailyRandom(schedule).catch(console.error);
@@ -605,16 +606,35 @@ function initReminderJobs() {
     const now = /* @__PURE__ */ new Date();
     const h = now.getHours();
     const m = now.getMinutes();
+    const today = todayStr();
+    const currentMinute = h * 60 + m;
     const due = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)(
       (0, import_drizzle_orm3.eq)(reminderSchedules.hour, h),
       (0, import_drizzle_orm3.eq)(reminderSchedules.minute, m),
       (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1),
       (0, import_drizzle_orm3.eq)(reminderSchedules.mode, "fixed")
     )).all();
-    if (due.length === 0) return;
     const meta = db().select().from(syncMeta).where((0, import_drizzle_orm3.eq)(syncMeta.key, "telegram_chat_id")).get();
     const globalChatId = meta ? Number(meta.value) : null;
     for (const schedule of due) {
+      try {
+        const chatId = schedule.chatId ?? globalChatId;
+        if (!chatId && !process.env.NTFY_TOPIC) continue;
+        await fireReminder(schedule, chatId);
+      } catch (err) {
+        console.error("[Lumina] Reminder error:", schedule.id, err);
+      }
+    }
+    const dailies = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)(
+      (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1),
+      (0, import_drizzle_orm3.inArray)(reminderSchedules.mode, ["daily_random", "daily_scatter"])
+    )).all();
+    for (const schedule of dailies) {
+      if (schedule.dailyFireDate !== today) continue;
+      const fireMinutes = JSON.parse(schedule.dailyFireMinutes);
+      if (!fireMinutes.includes(currentMinute)) continue;
+      const remaining = fireMinutes.filter((mm) => mm !== currentMinute);
+      db().update(reminderSchedules).set({ dailyFireMinutes: JSON.stringify(remaining) }).where((0, import_drizzle_orm3.eq)(reminderSchedules.id, schedule.id)).run();
       try {
         const chatId = schedule.chatId ?? globalChatId;
         if (!chatId && !process.env.NTFY_TOPIC) continue;

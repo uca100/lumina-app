@@ -3,6 +3,15 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.7.2] - 2026-05-03
+
+### Fixed
+- Daily random/scatter reminders now persist fire times to the DB so they survive server restarts — previously a restart between midnight and the scheduled time would silently drop the day's notification
+- On restart, any past-due reminders from the same day fire immediately as catch-up
+- ntfy notification body truncated to 400 chars to prevent OS-level truncation in the notification tray
+
+---
+
 ## [0.7.1] - 2026-05-02
 
 ### Added

@@ -38,5 +38,7 @@ export const reminderSchedules = sqliteTable('reminder_schedules', {
   count: integer('count').notNull().default(1),
   enabled: integer('enabled').notNull().default(1),
   chatId: integer('chat_id'),
+  dailyFireMinutes: text('daily_fire_minutes').notNull().default('[]'),
+  dailyFireDate: text('daily_fire_date').notNull().default(''),
   createdAt: integer('created_at').notNull(),
 })

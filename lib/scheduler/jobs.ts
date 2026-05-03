@@ -7,7 +7,7 @@ import { eq, and, inArray } from 'drizzle-orm'
 import { sendMessage } from '../telegram/bot'
 import { sendNtfy } from '../ntfy/notify'
 
-let lastDailyRandomDate = ''
+const NTFY_MAX_BODY = 400
 
 async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, chatId: number | null) {
   let pick
@@ -23,7 +23,10 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, cha
     pick = all[Math.floor(Math.random() * all.length)]
   }
 
-  const notifBody = pick.summary ?? pick.body
+  let notifBody = pick.summary ?? pick.body
+  if (notifBody.length > NTFY_MAX_BODY) {
+    notifBody = notifBody.slice(0, NTFY_MAX_BODY - 1) + '…'
+  }
   const lines = [
     notifBody,
     ...(pick.author ? [`— ${pick.author}`] : []),
@@ -56,19 +59,8 @@ function randomMinutesInWindow(count: number, windowStart: number): number[] {
   return result
 }
 
-function scheduleFireAt(minuteOfDay: number, schedule: typeof reminderSchedules.$inferSelect, chatId: number | null) {
-  const now = new Date()
-  const fireAt = new Date(now)
-  fireAt.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0)
-  const msUntil = fireAt.getTime() - now.getTime()
-  if (msUntil <= 0) return false
-
-  setTimeout(async () => {
-    try { await fireReminder(schedule, chatId) }
-    catch (err) { console.error('[Lumina] Reminder fire error:', schedule.id, err) }
-  }, msUntil)
-
-  return true
+function todayStr() {
+  return new Date().toISOString().slice(0, 10)
 }
 
 export async function scheduleSingleDailyRandom(schedule: typeof reminderSchedules.$inferSelect) {
@@ -76,44 +68,64 @@ export async function scheduleSingleDailyRandom(schedule: typeof reminderSchedul
   const chatId = schedule.chatId ?? (meta ? Number(meta.value) : null)
 
   const now = new Date()
+  const today = todayStr()
   const currentMinute = now.getHours() * 60 + now.getMinutes()
-  const windowStart = Math.max(8 * 60, currentMinute + 1)
 
+  const fireMinutes: number[] = JSON.parse(schedule.dailyFireMinutes)
+
+  if (schedule.dailyFireDate === today && fireMinutes.length > 0) {
+    // Already scheduled today — fire any past-due minutes immediately (catch-up on restart)
+    const pastDue = fireMinutes.filter(m => m <= currentMinute)
+    if (pastDue.length > 0) {
+      const remaining = fireMinutes.filter(m => m > currentMinute)
+      db().update(reminderSchedules)
+        .set({ dailyFireMinutes: JSON.stringify(remaining) })
+        .where(eq(reminderSchedules.id, schedule.id))
+        .run()
+      await fireReminder(schedule, chatId).catch(err =>
+        console.error('[Lumina] Catch-up reminder error:', schedule.id, err))
+    }
+    return
+  }
+
+  const windowStart = Math.max(8 * 60, currentMinute + 1)
   const [minute] = randomMinutesInWindow(1, windowStart)
   if (minute === undefined) return
 
-  if (scheduleFireAt(minute, schedule, chatId)) {
-    const h = Math.floor(minute / 60), m = minute % 60
-    console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)
-  }
+  db().update(reminderSchedules)
+    .set({ dailyFireMinutes: JSON.stringify([minute]), dailyFireDate: today })
+    .where(eq(reminderSchedules.id, schedule.id))
+    .run()
+
+  const h = Math.floor(minute / 60), m = minute % 60
+  console.log(`[Lumina] Daily random scheduled: ${schedule.label || schedule.id} at ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)
 }
 
 async function scheduleDailyScatter(schedule: typeof reminderSchedules.$inferSelect) {
-  const meta = db().select().from(syncMeta).where(eq(syncMeta.key, 'telegram_chat_id')).get()
-  const chatId = schedule.chatId ?? (meta ? Number(meta.value) : null)
-
   const now = new Date()
+  const today = todayStr()
   const currentMinute = now.getHours() * 60 + now.getMinutes()
-  const windowStart = Math.max(8 * 60, currentMinute + 1)
 
+  const fireMinutes: number[] = JSON.parse(schedule.dailyFireMinutes)
+
+  if (schedule.dailyFireDate === today && fireMinutes.length > 0) {
+    return
+  }
+
+  const windowStart = Math.max(8 * 60, currentMinute + 1)
   const count = schedule.count ?? 1
   const minutes = randomMinutesInWindow(count, windowStart)
-  let scheduled = 0
+  if (!minutes.length) return
 
-  for (const minute of minutes) {
-    if (scheduleFireAt(minute, schedule, chatId)) scheduled++
-  }
+  db().update(reminderSchedules)
+    .set({ dailyFireMinutes: JSON.stringify(minutes), dailyFireDate: today })
+    .where(eq(reminderSchedules.id, schedule.id))
+    .run()
 
-  if (scheduled > 0) {
-    console.log(`[Lumina] Daily scatter scheduled: ${schedule.label || schedule.id} — ${scheduled}× today`)
-  }
+  console.log(`[Lumina] Daily scatter scheduled: ${schedule.label || schedule.id} — ${minutes.length}× today`)
 }
 
 function scheduleDailyRandoms() {
-  const today = new Date().toDateString()
-  if (lastDailyRandomDate === today) return
-  lastDailyRandomDate = today
-
   const randoms = db().select().from(reminderSchedules)
     .where(and(eq(reminderSchedules.mode, 'daily_random'), eq(reminderSchedules.enabled, 1)))
     .all()
@@ -136,7 +148,10 @@ function initReminderJobs() {
     const now = new Date()
     const h = now.getHours()
     const m = now.getMinutes()
+    const today = todayStr()
+    const currentMinute = h * 60 + m
 
+    // Fixed schedules
     const due = db().select().from(reminderSchedules)
       .where(and(
         eq(reminderSchedules.hour, h),
@@ -146,12 +161,38 @@ function initReminderJobs() {
       ))
       .all()
 
-    if (due.length === 0) return
-
     const meta = db().select().from(syncMeta).where(eq(syncMeta.key, 'telegram_chat_id')).get()
     const globalChatId = meta ? Number(meta.value) : null
 
     for (const schedule of due) {
+      try {
+        const chatId = schedule.chatId ?? globalChatId
+        if (!chatId && !process.env.NTFY_TOPIC) continue
+        await fireReminder(schedule, chatId)
+      } catch (err) {
+        console.error('[Lumina] Reminder error:', schedule.id, err)
+      }
+    }
+
+    // Daily random and scatter — check DB-persisted fire times
+    const dailies = db().select().from(reminderSchedules)
+      .where(and(
+        eq(reminderSchedules.enabled, 1),
+        inArray(reminderSchedules.mode, ['daily_random', 'daily_scatter']),
+      ))
+      .all()
+
+    for (const schedule of dailies) {
+      if (schedule.dailyFireDate !== today) continue
+      const fireMinutes: number[] = JSON.parse(schedule.dailyFireMinutes)
+      if (!fireMinutes.includes(currentMinute)) continue
+
+      const remaining = fireMinutes.filter(mm => mm !== currentMinute)
+      db().update(reminderSchedules)
+        .set({ dailyFireMinutes: JSON.stringify(remaining) })
+        .where(eq(reminderSchedules.id, schedule.id))
+        .run()
+
       try {
         const chatId = schedule.chatId ?? globalChatId
         if (!chatId && !process.env.NTFY_TOPIC) continue
