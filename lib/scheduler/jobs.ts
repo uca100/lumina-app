@@ -37,7 +37,7 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, cha
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '')
     const clickUrl = pick.type === 'Affirmation'
       ? `${baseUrl}/lumina/affirmations`
-      : `${baseUrl}/lumina/item/${pick.id}`
+      : `${baseUrl}/lumina/view/${pick.id}`
     await sendNtfy(text, pick.title ?? undefined, pick.type ?? undefined, clickUrl)
   } else if (chatId) {
     await sendMessage(chatId, text)

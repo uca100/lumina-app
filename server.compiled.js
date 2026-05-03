@@ -498,7 +498,10 @@ async function sendNtfy(message, title, type, clickUrl) {
       "Tags": tag,
       "Content-Type": "text/plain",
       "Markdown": "yes",
-      ...clickUrl ? { "Click": clickUrl } : {}
+      ...clickUrl ? {
+        "Click": clickUrl,
+        "Actions": `view, Open in Lumina, ${clickUrl}`
+      } : {}
     },
     body: message
   });
@@ -531,7 +534,7 @@ async function fireReminder(schedule, chatId) {
   const text2 = lines.join("\n");
   if (process.env.NTFY_TOPIC) {
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
-    const clickUrl = pick.type === "Affirmation" ? `${baseUrl}/lumina/affirmations` : `${baseUrl}/lumina/item/${pick.id}`;
+    const clickUrl = pick.type === "Affirmation" ? `${baseUrl}/lumina/affirmations` : `${baseUrl}/lumina/view/${pick.id}`;
     await sendNtfy(text2, pick.title ?? void 0, pick.type ?? void 0, clickUrl);
   } else if (chatId) {
     await sendMessage(chatId, text2);

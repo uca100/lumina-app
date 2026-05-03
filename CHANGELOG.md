@@ -3,6 +3,18 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.7.3] - 2026-05-03
+
+### Added
+- New `/view/[id]` page — clean, read-only notification landing view: full-screen, type-colored gradient, large serif text, no edit UI; "Open in Lumina" link at the bottom goes to the full item page
+- ntfy notifications now include an "Open in Lumina" action button (via `Actions` header) for a visible tap target inside the app
+
+### Changed
+- Notification click URL for non-Affirmation items now points to `/view/[id]` instead of `/item/[id]`
+- Affirmation notifications continue to link to `/affirmations` (daily page)
+
+---
+
 ## [0.7.2] - 2026-05-03
 
 ### Fixed

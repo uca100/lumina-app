@@ -24,7 +24,10 @@ export async function sendNtfy(message: string, title?: string, type?: string, c
       'Tags': tag,
       'Content-Type': 'text/plain',
       'Markdown': 'yes',
-      ...(clickUrl ? { 'Click': clickUrl } : {}),
+      ...(clickUrl ? {
+        'Click': clickUrl,
+        'Actions': `view, Open in Lumina, ${clickUrl}`,
+      } : {}),
     },
     body: message,
   })
