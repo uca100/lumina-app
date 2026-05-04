@@ -3,6 +3,13 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.7.5] - 2026-05-04
+
+### Fixed
+- ntfy notifications now show the correct Hebrew (and any non-ASCII) title instead of falling back to "Lumina" — switched from HTTP headers (ASCII-only) to ntfy's JSON API which handles Unicode natively
+
+---
+
 ## [0.7.4] - 2026-05-04
 
 ### Fixed

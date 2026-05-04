@@ -491,20 +491,21 @@ async function sendNtfy(message, title, type, clickUrl) {
   const topic = process.env.NTFY_TOPIC;
   if (!topic) return;
   const tag = (type && TYPE_EMOJI[type]) ?? "sparkles";
-  const res = await fetch(`${NTFY_BASE}/${topic}`, {
+  const payload = {
+    topic,
+    message,
+    title: title?.trim() || "Lumina",
+    tags: [tag],
+    priority: 3
+  };
+  if (clickUrl) {
+    payload.click = clickUrl;
+    payload.actions = [{ action: "view", label: "Open in Lumina", url: clickUrl }];
+  }
+  const res = await fetch(NTFY_BASE, {
     method: "POST",
-    headers: {
-      "Title": (title ?? "Lumina").replace(/[^\x00-\x7F]/g, "").trim() || "Lumina",
-      "Priority": "default",
-      "Tags": tag,
-      "Content-Type": "text/plain",
-      "Markdown": "yes",
-      ...clickUrl ? {
-        "Click": clickUrl,
-        "Actions": `view, Open in Lumina, ${clickUrl}`
-      } : {}
-    },
-    body: message
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   });
   if (!res.ok) {
     console.error(`[Lumina] ntfy failed: ${res.status} ${await res.text()}`);
