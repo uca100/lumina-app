@@ -261,7 +261,8 @@ async function pullFromNotion() {
     const author = p.Author?.rich_text?.map((r) => r.plain_text).join("") || null;
     const tags = JSON.stringify(p.Tags?.multi_select?.map((t) => t.name) ?? []);
     if (existing) {
-      database.update(items).set({ title, body, type, source, author, tags, synced: 1, updatedAt: now }).where((0, import_drizzle_orm.eq)(items.notionId, page.id)).run();
+      const mergedBody = body.length >= existing.body.length ? body : existing.body;
+      database.update(items).set({ title, body: mergedBody, type, source, author, tags, synced: 1, updatedAt: now }).where((0, import_drizzle_orm.eq)(items.notionId, page.id)).run();
     } else {
       database.insert(items).values({
         id: (0, import_nanoid.nanoid)(),
@@ -311,7 +312,7 @@ When given a piece of text, you will:
 2. Extract the author if present (for quotes)
 3. Choose 3\u20135 tags from the vocabulary below
 4. Generate a short title (max 7 words, no articles like "A" or "The" at start)
-5. Generate a notification summary: if the content is under 180 chars, use it verbatim (lightly cleaned); otherwise distill the single core insight into 1\u20132 punchy sentences. The summary must not simply restate the title.
+5. Generate a summary: copy the opening 1\u20132 sentences of the content exactly as written. Never paraphrase or reword \u2014 preserve the original language and phrasing. If the content is a single short sentence, copy it exactly.
 
 Language rule: generate the title and summary in the same language as the input content. If the input is Hebrew, output Hebrew. If English, output English.
 
@@ -523,7 +524,7 @@ async function fireReminder(schedule, chatId) {
     if (!all.length) return;
     pick = all[Math.floor(Math.random() * all.length)];
   }
-  let notifBody = pick.summary ?? pick.body;
+  let notifBody = pick.body;
   if (notifBody.length > NTFY_MAX_BODY) {
     notifBody = notifBody.slice(0, NTFY_MAX_BODY - 1) + "\u2026";
   }
@@ -534,8 +535,10 @@ async function fireReminder(schedule, chatId) {
   const text2 = lines.join("\n");
   if (process.env.NTFY_TOPIC) {
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
-    const clickUrl = pick.type === "Affirmation" ? `${baseUrl}/lumina/affirmations` : `${baseUrl}/lumina/view/${pick.id}`;
-    await sendNtfy(text2, pick.title ?? void 0, pick.type ?? void 0, clickUrl);
+    const isAffirmation = pick.type === "Affirmation";
+    const clickUrl = isAffirmation ? `${baseUrl}/lumina/affirmations` : `${baseUrl}/lumina/view/${pick.id}`;
+    const notifTitle = isAffirmation ? "Today's Affirmations" : pick.title ?? void 0;
+    await sendNtfy(text2, notifTitle, pick.type ?? void 0, clickUrl);
   } else if (chatId) {
     await sendMessage(chatId, text2);
   }

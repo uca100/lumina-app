@@ -23,7 +23,7 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, cha
     pick = all[Math.floor(Math.random() * all.length)]
   }
 
-  let notifBody = pick.summary ?? pick.body
+  let notifBody = pick.body
   if (notifBody.length > NTFY_MAX_BODY) {
     notifBody = notifBody.slice(0, NTFY_MAX_BODY - 1) + '…'
   }
@@ -35,10 +35,12 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, cha
 
   if (process.env.NTFY_TOPIC) {
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '')
-    const clickUrl = pick.type === 'Affirmation'
+    const isAffirmation = pick.type === 'Affirmation'
+    const clickUrl = isAffirmation
       ? `${baseUrl}/lumina/affirmations`
       : `${baseUrl}/lumina/view/${pick.id}`
-    await sendNtfy(text, pick.title ?? undefined, pick.type ?? undefined, clickUrl)
+    const notifTitle = isAffirmation ? "Today's Affirmations" : (pick.title ?? undefined)
+    await sendNtfy(text, notifTitle, pick.type ?? undefined, clickUrl)
   } else if (chatId) {
     await sendMessage(chatId, text)
   }

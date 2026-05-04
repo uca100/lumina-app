@@ -8,7 +8,7 @@ When given a piece of text, you will:
 2. Extract the author if present (for quotes)
 3. Choose 3–5 tags from the vocabulary below
 4. Generate a short title (max 7 words, no articles like "A" or "The" at start)
-5. Generate a notification summary: if the content is under 180 chars, use it verbatim (lightly cleaned); otherwise distill the single core insight into 1–2 punchy sentences. The summary must not simply restate the title.
+5. Generate a summary: copy the opening 1–2 sentences of the content exactly as written. Never paraphrase or reword — preserve the original language and phrasing. If the content is a single short sentence, copy it exactly.
 
 Language rule: generate the title and summary in the same language as the input content. If the input is Hebrew, output Hebrew. If English, output English.
 

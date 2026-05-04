@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { items } from '@/lib/db/schema'
 import { desc, like, eq, and } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
+import { classifyAndSave } from '@/lib/ingest/save'
 
 type ItemType = 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
 
@@ -30,29 +30,18 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const database = db()
 
   const normalizedBody = (body.body as string)?.trim()
   if (!normalizedBody) return NextResponse.json({ error: 'body required' }, { status: 400 })
 
-  const existing = database.select().from(items).where(eq(items.body, normalizedBody)).get()
-  if (existing) return NextResponse.json({ ...existing, tags: JSON.parse(existing.tags), duplicate: true }, { status: 200 })
+  const result = await classifyAndSave(normalizedBody, (body.source as 'manual' | 'shortcut' | 'telegram' | 'whatsapp' | 'email' | 'voice') ?? 'manual', {
+    author: body.author || undefined,
+    title: body.title || undefined,
+    type: body.type || undefined,
+    tags: Array.isArray(body.tags) && body.tags.length ? body.tags : undefined,
+  })
 
-  const now = Date.now()
-  const item = {
-    id: nanoid(),
-    title: body.title ?? null,
-    body: normalizedBody,
-    type: (body.type ?? 'Thought') as ItemType,
-    source: body.source ?? 'manual',
-    author: body.author ?? null,
-    tags: JSON.stringify(body.tags ?? []),
-    notionId: null,
-    synced: 0,
-    createdAt: now,
-    updatedAt: now,
-  }
-
-  database.insert(items).values(item).run()
-  return NextResponse.json({ ...item, tags: body.tags ?? [] }, { status: 201 })
+  const saved = db().select().from(items).where(eq(items.id, result.id)).get()
+  const status = result.duplicate ? 200 : 201
+  return NextResponse.json({ ...saved, tags: JSON.parse(saved!.tags) }, { status })
 }

@@ -3,6 +3,20 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.7.4] - 2026-05-04
+
+### Fixed
+- Affirmation notifications now show "Today's Affirmations" as the title instead of the item's own title
+- Notifications now show the original body text verbatim (previously used AI-generated summary which could change meaning)
+- Fixed broken "Open in Lumina" link on `/view/[id]` page (double `/lumina` prefix due to Next.js basePath)
+- Notion pull no longer overwrites local body with truncated version (Notion caps at 2000 chars on push — local body is preserved if longer)
+
+### Changed
+- All save paths unified: `POST /api/items` (CaptureForm) now goes through `classifyAndSave` like all other ingests — every item gets AI classification, deduplication check, and summary regardless of source
+- AI summary prompt updated to copy opening sentences verbatim instead of paraphrasing/distilling
+
+---
+
 ## [0.7.3] - 2026-05-03
 
 ### Added

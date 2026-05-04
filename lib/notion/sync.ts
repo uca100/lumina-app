@@ -119,8 +119,10 @@ export async function pullFromNotion() {
     const tags = JSON.stringify(p.Tags?.multi_select?.map((t) => t.name) ?? [])
 
     if (existing) {
+      // Prefer the longer body — Notion truncates at 2000 chars on push
+      const mergedBody = body.length >= existing.body.length ? body : existing.body
       database.update(items)
-        .set({ title, body, type, source, author, tags, synced: 1, updatedAt: now })
+        .set({ title, body: mergedBody, type, source, author, tags, synced: 1, updatedAt: now })
         .where(eq(items.notionId, page.id))
         .run()
     } else {

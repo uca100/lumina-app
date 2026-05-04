@@ -52,7 +52,7 @@ export default function ViewPage() {
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-stone-50 text-stone-400">
       <div className="text-5xl">✦</div>
       <p className="text-sm">Item not found</p>
-      <Link href="/lumina" className="text-xs text-amber-500 hover:underline">Back to Lumina</Link>
+      <Link href="/" className="text-xs text-amber-500 hover:underline">Back to Lumina</Link>
     </div>
   )
 
@@ -114,7 +114,7 @@ export default function ViewPage() {
       {/* footer */}
       <footer className="text-center pb-8">
         <Link
-          href={`/lumina/item/${item.id}`}
+          href={`/item/${item.id}`}
           className="inline-flex items-center gap-1.5 text-xs text-stone-400 hover:text-amber-600 transition-colors"
         >
           <span className="text-amber-400">✦</span> Open in Lumina
