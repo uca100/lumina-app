@@ -1,7 +1,7 @@
 import { Client } from '@notionhq/client'
 import { db } from '../db/client'
 import { items, syncMeta } from '../db/schema'
-import { eq, isNotNull } from 'drizzle-orm'
+import { eq, isNotNull, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY })
@@ -59,7 +59,7 @@ export async function pushToNotion() {
   if (!DB_ID) return
 
   const database = db()
-  const pending = database.select().from(items).where(eq(items.synced, 0)).all()
+  const pending = database.select().from(items).where(and(eq(items.synced, 0), eq(items.status, 'published'))).all()
 
   for (const item of pending) {
     const tags = JSON.parse(item.tags) as string[]
@@ -70,6 +70,7 @@ export async function pushToNotion() {
       Body: { rich_text: [{ text: { content: item.body.slice(0, 2000) } }] },
       Tags: { multi_select: tags.map((t) => ({ name: t })) },
       Date: { date: { start: new Date(item.createdAt).toISOString().split('T')[0] } },
+      Status: { select: { name: item.status } },
       Synced: { checkbox: true },
     }
     if (item.author) props.Author = { rich_text: [{ text: { content: item.author } }] }

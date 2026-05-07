@@ -3,6 +3,20 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.8.0] - 2026-05-07
+
+### Added
+- Item status system: `draft`, `review`, `published` — only `published` items sync to Notion
+- Manual captures default to `draft`; ingested items (Telegram, email, WhatsApp, shortcut, voice) default to `review`
+- Status badge on `ItemCard` (shown only for non-published items)
+- Status selector in item edit form with color-coded buttons and descriptions
+- Status filter row on main feed (`All / Draft / Review / Published`)
+- Dedicated Inbox page (`/queue`) — shows pending-review and draft items grouped separately, with one-click **Publish**, **→ Draft**, **→ Review**, **Edit**, and **Delete** actions per item
+- `PATCH /api/items/:id` endpoint for lightweight status-only updates
+- `Status` property pushed to Notion alongside item data
+
+---
+
 ## [0.7.5] - 2026-05-04
 
 ### Fixed

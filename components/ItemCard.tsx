@@ -16,7 +16,14 @@ export interface Item {
   tags: string[]
   synced: number
   pinned: number
+  status: 'draft' | 'review' | 'published'
   createdAt: number
+}
+
+const STATUS_CONFIG: Record<string, { label: string; badge: string }> = {
+  draft:     { label: 'Draft',     badge: 'text-zinc-500 bg-zinc-800/60 border-zinc-700/60' },
+  review:    { label: 'Review',    badge: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
+  published: { label: 'Published', badge: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
 }
 
 const TYPE_CONFIG: Record<string, { label: string; border: string; badge: string; quote: boolean }> = {
@@ -33,6 +40,7 @@ export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDelete
   const router = useRouter()
   const [deleting, setDeleting] = useState(false)
   const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.Thought
+  const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft
   const preview = item.body.length > 220 ? item.body.slice(0, 220) + '…' : item.body
   const attribution = item.author || (item.source !== 'manual' ? item.source : null)
   const titleRTL = item.title ? isRTL(item.title) : false
@@ -54,9 +62,16 @@ export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDelete
 
         {/* header row */}
         <div className="flex items-center justify-between gap-3 mb-4">
-          <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${cfg.badge}`}>
-            {cfg.label}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${cfg.badge}`}>
+              {cfg.label}
+            </span>
+            {item.status !== 'published' && (
+              <span className={`text-[10px] font-medium uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusCfg.badge}`}>
+                {statusCfg.label}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <span className="text-[11px] text-zinc-700">
               {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

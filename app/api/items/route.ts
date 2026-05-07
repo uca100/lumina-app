@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
   const type = searchParams.get('type') ?? ''
   const tag = searchParams.get('tag') ?? ''
   const pinned = searchParams.get('pinned') ?? ''
+  const status = searchParams.get('status') ?? ''
 
   const database = db()
   const conditions = []
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
   if (type) conditions.push(eq(items.type, type as ItemType))
   if (tag) conditions.push(like(items.tags, `%"${tag}"%`))
   if (pinned === '1') conditions.push(eq(items.pinned, 1))
+  if (status) conditions.push(eq(items.status, status as 'draft' | 'review' | 'published'))
 
   const rows = conditions.length
     ? database.select().from(items).where(and(...conditions)).orderBy(desc(items.createdAt)).limit(100).all()

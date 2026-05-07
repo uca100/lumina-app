@@ -22,9 +22,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     author: body.author,
     tags: JSON.stringify(body.tags ?? []),
     pinned: body.pinned ?? 0,
+    status: body.status ?? 'draft',
     synced: 0,
     updatedAt: now,
   }).where(eq(items.id, id)).run()
+
+  const updated = db().select().from(items).where(eq(items.id, id)).get()
+  if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  return NextResponse.json({ ...updated, tags: JSON.parse(updated.tags) })
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const body = await req.json()
+  const now = Date.now()
+
+  if (body.status) {
+    db().update(items).set({ status: body.status, synced: 0, updatedAt: now }).where(eq(items.id, id)).run()
+  }
 
   const updated = db().select().from(items).where(eq(items.id, id)).get()
   if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })

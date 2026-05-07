@@ -38,9 +38,12 @@ export async function classifyAndSave(
   title = meta?.title ?? classified.title
   summary = classified.summary
 
+  const status = source === 'manual' ? 'draft' : 'review'
+
   db().insert(items).values({
     id, title, body: normalizedBody, type, source, author, summary,
     tags: JSON.stringify(tags),
+    status,
     synced: 0,
     createdAt: now,
     updatedAt: now,

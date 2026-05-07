@@ -24,6 +24,7 @@ export default function FeedPage() {
   const [q, setQ] = useState('')
   const [type, setType] = useState('')
   const [tag, setTag] = useState('')
+  const [status, setStatus] = useState('')
   const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -49,11 +50,12 @@ export default function FeedPage() {
     if (debouncedQ) params.set('q', debouncedQ)
     if (type) params.set('type', type)
     if (tag) params.set('tag', tag)
+    if (status) params.set('status', status)
     const res = await fetch(`/lumina/api/items?${params}`)
     const data = await res.json()
     setItems(data)
     setLoading(false)
-  }, [debouncedQ, type, tag])
+  }, [debouncedQ, type, tag, status])
 
   useEffect(() => { fetchItems() }, [fetchItems])
 
@@ -126,6 +128,13 @@ export default function FeedPage() {
               {backfilling ? '✦ Tagging…' : '✦ Fix tags'}
             </button>
             <Link
+              href="/queue"
+              className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all"
+              title="Inbox — drafts & pending review"
+            >
+              ◎ Inbox
+            </Link>
+            <Link
               href="/affirmations"
               className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-emerald-500/50 hover:text-emerald-400 transition-all"
               title="Affirmations"
@@ -193,6 +202,30 @@ export default function FeedPage() {
             ))}
           </div>
 
+          <div className="flex gap-1.5">
+            {[
+              { value: '', label: 'All' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'review', label: 'Review' },
+              { value: 'published', label: 'Published' },
+            ].map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setStatus(value)}
+                className={`px-3 py-1 rounded-full text-xs border transition-all font-medium ${
+                  status === value
+                    ? value === '' ? 'bg-zinc-700 text-zinc-200 border-zinc-600'
+                      : value === 'draft' ? 'bg-zinc-600 text-white border-zinc-600'
+                      : value === 'review' ? 'bg-amber-500 text-black border-amber-500'
+                      : 'bg-emerald-600 text-white border-emerald-600'
+                    : 'border-zinc-800 text-zinc-600 bg-zinc-900/40 hover:border-zinc-600 hover:text-zinc-400'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {allTags.length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pt-1 pb-0.5 -mx-1 px-1">
               {tag && (
@@ -226,9 +259,9 @@ export default function FeedPage() {
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <div className="text-7xl font-serif text-zinc-800">"</div>
             <p className="text-zinc-500 text-center max-w-xs">
-              {q || type || tag ? 'Nothing matches your search.' : 'Your collection is empty. Start capturing what moves you.'}
+              {q || type || tag || status ? 'Nothing matches your search.' : 'Your collection is empty. Start capturing what moves you.'}
             </p>
-            {!q && !type && !tag && (
+            {!q && !type && !tag && !status && (
               <Link href="/capture" className="mt-2 text-sm text-amber-500 underline underline-offset-4 hover:text-amber-400">
                 Capture your first inspiration →
               </Link>

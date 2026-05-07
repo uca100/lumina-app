@@ -10,6 +10,7 @@ export const items = sqliteTable('items', {
   tags: text('tags').notNull().default('[]'),
   summary: text('summary'),
   pinned: integer('pinned').notNull().default(0),
+  status: text('status', { enum: ['draft', 'review', 'published'] }).notNull().default('draft'),
   notionId: text('notion_id'),
   synced: integer('synced').notNull().default(0),
   createdAt: integer('created_at').notNull(),

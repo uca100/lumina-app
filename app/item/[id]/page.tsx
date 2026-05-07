@@ -8,6 +8,13 @@ import { Item } from '@/components/ItemCard'
 import { isRTL } from '@/lib/utils/rtl'
 
 const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
+const STATUSES = ['draft', 'review', 'published'] as const
+
+const STATUS_LABELS: Record<string, { label: string; description: string; style: string; active: string }> = {
+  draft:     { label: 'Draft',     description: 'Not ready yet',       style: 'border-zinc-300 text-zinc-400 bg-white hover:border-zinc-400',          active: 'bg-zinc-600 text-white border-zinc-600' },
+  review:    { label: 'Review',    description: 'Needs a decision',    style: 'border-stone-200 text-stone-400 bg-white hover:border-amber-300',         active: 'bg-amber-500 text-white border-amber-500' },
+  published: { label: 'Published', description: 'Final — syncs to Notion', style: 'border-stone-200 text-stone-400 bg-white hover:border-emerald-300', active: 'bg-emerald-600 text-white border-emerald-600' },
+}
 
 const TYPE_ACCENT: Record<string, string> = {
   Quote:       'from-sky-50 to-white border-sky-100',
@@ -128,12 +135,21 @@ export default function ItemPage() {
             {/* card shell */}
             <div className={`bg-gradient-to-b ${accent} border rounded-3xl px-8 py-10 shadow-sm mb-6`}>
 
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-6 flex-wrap">
                 <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border ${badge}`}>
                   {item.type}
                 </span>
+                {item.status === 'draft' && (
+                  <span className="text-[10px] font-medium uppercase tracking-widest px-2.5 py-1 rounded-full border border-zinc-300 text-zinc-500 bg-zinc-50">Draft</span>
+                )}
+                {item.status === 'review' && (
+                  <span className="text-[10px] font-medium uppercase tracking-widest px-2.5 py-1 rounded-full border border-amber-300 text-amber-600 bg-amber-50">Review</span>
+                )}
+                {item.status === 'published' && (
+                  <span className="text-[10px] font-medium uppercase tracking-widest px-2.5 py-1 rounded-full border border-emerald-300 text-emerald-600 bg-emerald-50">Published</span>
+                )}
                 <span className="text-xs text-stone-300">{new Date(item.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-                {item.synced === 0 && <span className="text-xs text-amber-500 ml-auto">● Pending sync</span>}
+                {item.synced === 0 && item.status === 'published' && <span className="text-xs text-amber-500 ml-auto">● Pending sync</span>}
               </div>
 
               {item.type === 'Quote' && (
@@ -169,6 +185,26 @@ export default function ItemPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-5">
+
+            <div>
+              <label className="block text-[10px] text-stone-400 mb-2 uppercase tracking-widest">Status</label>
+              <div className="flex flex-wrap gap-2">
+                {STATUSES.map((s) => {
+                  const sc = STATUS_LABELS[s]
+                  const isActive = form.status === s
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setForm({ ...form, status: s })}
+                      className={`px-4 py-1.5 rounded-full text-sm border font-medium transition-all ${isActive ? sc.active : sc.style}`}
+                    >
+                      {sc.label}
+                      <span className="ml-1.5 text-[10px] opacity-60">{sc.description}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
             <div>
               <label className="block text-[10px] text-stone-400 mb-2 uppercase tracking-widest">Type</label>
