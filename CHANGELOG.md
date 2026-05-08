@@ -3,6 +3,13 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.9.2] - 2026-05-09
+
+### Fixed
+- Login page redirect loop: proxy intercepted `/api/auth/me` (not in public paths), returned 307 → login page (200), so `fetch` resolved `r.ok=true` and `router.replace('/')` fired immediately — user was stuck looping before the form was usable. Fixed by letting all `/api/` routes through the proxy (they return 401 from their own handlers); also added `redirect:'manual'` to the auth check fetch as defense.
+
+---
+
 ## [0.9.1] - 2026-05-08
 
 ### Fixed
