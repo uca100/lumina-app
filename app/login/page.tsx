@@ -22,9 +22,9 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/lumina/api/auth/setup', { method: 'HEAD' }).catch(() => {})
-    // Check if setup needed (no users)
-    fetch('/lumina/api/auth/me').then(r => {
+    // Check if already logged in — use redirect:'manual' so a proxy redirect
+    // (307 to login) doesn't look like a successful response (r.ok=true).
+    fetch('/lumina/api/auth/me', { redirect: 'manual' }).then(r => {
       if (r.ok) router.replace('/')
     })
   }, [router])

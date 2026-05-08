@@ -15,11 +15,10 @@ async function verifySession(token: string): Promise<boolean> {
 
 // Paths are WITHOUT basePath — NextURL.pathname in proxy includes basePath,
 // but we strip it to compare against the base-stripped path for public routes.
+// API routes handle their own auth (return 401/403) — proxy only guards page routes.
 const PUBLIC_PATHS = [
   '/login',
-  '/api/auth/login',
-  '/api/auth/setup',
-  '/api/ingest/',
+  '/api/',
   '/view/',
   '/_next/',
 ]
