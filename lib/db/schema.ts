@@ -1,5 +1,16 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  username: text('username').notNull().unique(),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  ntfyTopic: text('ntfy_topic'),
+  telegramChatId: integer('telegram_chat_id'),
+  ingestApiKey: text('ingest_api_key').notNull().unique(),
+  createdAt: integer('created_at').notNull(),
+})
+
 export const items = sqliteTable('items', {
   id: text('id').primaryKey(),
   title: text('title'),
@@ -11,6 +22,8 @@ export const items = sqliteTable('items', {
   summary: text('summary'),
   pinned: integer('pinned').notNull().default(0),
   status: text('status', { enum: ['draft', 'review', 'published'] }).notNull().default('draft'),
+  mark: integer('mark').notNull().default(2),
+  userId: text('user_id'),
   notionId: text('notion_id'),
   synced: integer('synced').notNull().default(0),
   createdAt: integer('created_at').notNull(),
@@ -19,6 +32,7 @@ export const items = sqliteTable('items', {
   index('idx_items_type').on(t.type),
   index('idx_items_synced').on(t.synced),
   index('idx_items_created').on(t.createdAt),
+  index('idx_items_user').on(t.userId),
 ])
 
 export const syncMeta = sqliteTable('sync_meta', {
@@ -39,6 +53,7 @@ export const reminderSchedules = sqliteTable('reminder_schedules', {
   count: integer('count').notNull().default(1),
   enabled: integer('enabled').notNull().default(1),
   chatId: integer('chat_id'),
+  userId: text('user_id'),
   dailyFireMinutes: text('daily_fire_minutes').notNull().default('[]'),
   dailyFireDate: text('daily_fire_date').notNull().default(''),
   createdAt: integer('created_at').notNull(),

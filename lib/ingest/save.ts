@@ -11,7 +11,7 @@ const VALID_TYPES = new Set(['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson
 export async function classifyAndSave(
   body: string,
   source: Source,
-  meta?: { author?: string; title?: string; type?: string; tags?: string[] }
+  meta?: { author?: string; title?: string; type?: string; tags?: string[]; userId?: string }
 ) {
   const normalizedBody = body.trim()
   const existing = db().select().from(items).where(eq(items.body, normalizedBody)).get()
@@ -44,6 +44,7 @@ export async function classifyAndSave(
     id, title, body: normalizedBody, type, source, author, summary,
     tags: JSON.stringify(tags),
     status,
+    userId: meta?.userId ?? null,
     synced: 0,
     createdAt: now,
     updatedAt: now,

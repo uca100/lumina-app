@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
+import { UserBadge } from '@/components/UserBadge'
 
 const ITEM_TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
 
@@ -139,11 +140,14 @@ export default function RemindersPage() {
       </div>
 
       <header className="sticky top-0 z-10 backdrop-blur-md bg-black/40 border-b border-white/5 px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link href="/" className="text-zinc-600 hover:text-zinc-400 transition-colors text-sm">← Back</Link>
-          <span className="text-zinc-700">|</span>
-          <span className="text-amber-500">⏰</span>
-          <h1 className="font-serif text-xl font-bold text-white tracking-tight">Reminders</h1>
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-zinc-600 hover:text-zinc-400 transition-colors text-sm">← Back</Link>
+            <span className="text-zinc-700">|</span>
+            <span className="text-amber-500">⏰</span>
+            <h1 className="font-serif text-xl font-bold text-white tracking-tight">Reminders</h1>
+          </div>
+          <UserBadge />
         </div>
       </header>
 

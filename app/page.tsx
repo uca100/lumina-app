@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ItemCard, Item } from '@/components/ItemCard'
+import { UserBadge } from '@/components/UserBadge'
 
 const TYPES = ['', 'Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
 
@@ -161,6 +162,7 @@ export default function FeedPage() {
             >
               + Capture
             </Link>
+            <UserBadge />
           </div>
         </div>
       </header>

@@ -10,8 +10,8 @@ const TYPE_EMOJI: Record<string, string> = {
   Pattern: 'diamond_shape_with_a_dot_inside',
 }
 
-export async function sendNtfy(message: string, title?: string, type?: string, clickUrl?: string) {
-  const topic = process.env.NTFY_TOPIC
+export async function sendNtfy(message: string, title?: string, type?: string, clickUrl?: string, topicOverride?: string) {
+  const topic = topicOverride ?? process.env.NTFY_TOPIC
   if (!topic) return
 
   const tag = (type && TYPE_EMOJI[type]) ?? 'sparkles'

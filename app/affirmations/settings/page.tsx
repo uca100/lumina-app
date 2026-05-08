@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
 import { isRTL } from '@/lib/utils/rtl'
+import { UserBadge } from '@/components/UserBadge'
 
 interface Reminder {
   id: string
@@ -206,7 +207,7 @@ export default function AffirmationsSettingsPage() {
             ← Affirmations
           </Link>
           <h1 className="font-serif text-base font-bold text-stone-700">Affirmation Settings</h1>
-          <div className="w-20" />
+          <UserBadge />
         </div>
       </header>
 

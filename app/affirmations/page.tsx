@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
 import { isRTL } from '@/lib/utils/rtl'
+import { UserBadge } from '@/components/UserBadge'
 
 function dateSeed(): number {
   return new Date().toDateString().split('').reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -68,12 +69,15 @@ export default function AffirmationsPage() {
           <Link href="/" className="text-emerald-800 hover:text-emerald-500 text-sm transition-colors">
             ← Lumina
           </Link>
-          <Link
-            href="/affirmations/settings"
-            className="text-xs px-3 py-1.5 border border-emerald-900/60 rounded-full text-emerald-700 hover:border-emerald-500/40 hover:text-emerald-400 transition-all"
-          >
-            ⚙ Settings
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/affirmations/settings"
+              className="text-xs px-3 py-1.5 border border-emerald-900/60 rounded-full text-emerald-700 hover:border-emerald-500/40 hover:text-emerald-400 transition-all"
+            >
+              ⚙ Settings
+            </Link>
+            <UserBadge />
+          </div>
         </div>
       </header>
 

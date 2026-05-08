@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { items } from '@/lib/db/schema'
-import { desc, like, eq, and } from 'drizzle-orm'
+import { desc, like, eq, and, or, isNull } from 'drizzle-orm'
 import { classifyAndSave } from '@/lib/ingest/save'
+import { getUserIdFromRequest } from '@/lib/auth/session'
 
 type ItemType = 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
 
 export async function GET(req: NextRequest) {
+  const userId = await getUserIdFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = req.nextUrl
   const q = searchParams.get('q') ?? ''
   const type = searchParams.get('type') ?? ''
@@ -15,22 +19,24 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status') ?? ''
 
   const database = db()
-  const conditions = []
+  // User sees own items + shared (userId IS NULL)
+  const visibility = or(eq(items.userId, userId), isNull(items.userId))
+  const conditions = [visibility!]
   if (q) conditions.push(like(items.body, `%${q}%`))
   if (type) conditions.push(eq(items.type, type as ItemType))
   if (tag) conditions.push(like(items.tags, `%"${tag}"%`))
   if (pinned === '1') conditions.push(eq(items.pinned, 1))
   if (status) conditions.push(eq(items.status, status as 'draft' | 'review' | 'published'))
 
-  const rows = conditions.length
-    ? database.select().from(items).where(and(...conditions)).orderBy(desc(items.createdAt)).limit(100).all()
-    : database.select().from(items).orderBy(desc(items.createdAt)).limit(100).all()
-
+  const rows = database.select().from(items).where(and(...conditions)).orderBy(desc(items.createdAt)).limit(200).all()
   const parsed = rows.map((r) => ({ ...r, tags: JSON.parse(r.tags) }))
   return NextResponse.json(parsed)
 }
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserIdFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = await req.json()
 
   const normalizedBody = (body.body as string)?.trim()
@@ -41,9 +47,10 @@ export async function POST(req: NextRequest) {
     title: body.title || undefined,
     type: body.type || undefined,
     tags: Array.isArray(body.tags) && body.tags.length ? body.tags : undefined,
+    userId,
   })
 
   const saved = db().select().from(items).where(eq(items.id, result.id)).get()
-  const status = result.duplicate ? 200 : 201
-  return NextResponse.json({ ...saved, tags: JSON.parse(saved!.tags) }, { status })
+  const statusCode = result.duplicate ? 200 : 201
+  return NextResponse.json({ ...saved, tags: JSON.parse(saved!.tags) }, { status: statusCode })
 }

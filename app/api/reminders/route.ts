@@ -1,23 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
-import { reminderSchedules, syncMeta } from '@/lib/db/schema'
+import { reminderSchedules, users } from '@/lib/db/schema'
 import { asc, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { scheduleSingleDailyRandom } from '@/lib/scheduler/jobs'
+import { getUserIdFromRequest } from '@/lib/auth/session'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const userId = await getUserIdFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const rows = db().select().from(reminderSchedules)
+    .where(eq(reminderSchedules.userId, userId))
     .orderBy(asc(reminderSchedules.hour), asc(reminderSchedules.minute))
     .all()
 
-  const meta = db().select().from(syncMeta).where(eq(syncMeta.key, 'telegram_chat_id')).get()
-  const telegramChatId = meta?.value ?? null
+  const user = db().select().from(users).where(eq(users.id, userId)).get()
 
   const parsed = rows.map(r => ({ ...r, typesFilter: JSON.parse(r.typesFilter) }))
-  return NextResponse.json({ schedules: parsed, telegramChatId })
+  return NextResponse.json({ schedules: parsed, telegramChatId: user?.telegramChatId ?? null })
 }
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserIdFromRequest(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = await req.json()
 
   type Mode = 'fixed' | 'daily_random' | 'daily_scatter'
@@ -37,6 +44,7 @@ export async function POST(req: NextRequest) {
     count: Number(body.count ?? 1),
     enabled: body.enabled ?? 1,
     chatId: body.chatId ?? null,
+    userId,
     createdAt: Date.now(),
   }
 

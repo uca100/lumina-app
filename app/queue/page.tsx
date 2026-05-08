@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { isRTL } from '@/lib/utils/rtl'
+import { UserBadge } from '@/components/UserBadge'
 
 interface QueueItem {
   id: string
@@ -13,6 +14,7 @@ interface QueueItem {
   author: string | null
   tags: string[]
   status: 'draft' | 'review' | 'published'
+  mark: number
   createdAt: number
 }
 
@@ -67,6 +69,16 @@ export default function QueuePage() {
     setActing((a) => ({ ...a, [id]: false }))
   }
 
+  async function setMark(id: string, mark: number) {
+    await fetch(`/lumina/api/items/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mark }),
+    })
+    setReviewItems((items) => items.map((i) => i.id === id ? { ...i, mark } : i))
+    setDraftItems((items) => items.map((i) => i.id === id ? { ...i, mark } : i))
+  }
+
   async function deleteItem(id: string) {
     if (!confirm('Delete this item?')) return
     setActing((a) => ({ ...a, [id]: true }))
@@ -96,6 +108,7 @@ export default function QueuePage() {
               <span className="text-[11px] text-zinc-500 bg-zinc-800/80 px-2 py-0.5 rounded-full font-mono">{total}</span>
             )}
           </div>
+          <UserBadge />
         </div>
       </header>
 
@@ -132,6 +145,7 @@ export default function QueuePage() {
                       onPublish={() => setStatus(item.id, 'published')}
                       onMoveToDraft={() => setStatus(item.id, 'draft')}
                       onDelete={() => deleteItem(item.id)}
+                      onMark={(m) => setMark(item.id, m)}
                     />
                   ))}
                 </div>
@@ -153,6 +167,7 @@ export default function QueuePage() {
                       onPublish={() => setStatus(item.id, 'published')}
                       onMoveToReview={() => setStatus(item.id, 'review')}
                       onDelete={() => deleteItem(item.id)}
+                      onMark={(m) => setMark(item.id, m)}
                     />
                   ))}
                 </div>
@@ -173,6 +188,7 @@ function QueueCard({
   onMoveToDraft,
   onMoveToReview,
   onDelete,
+  onMark,
 }: {
   item: QueueItem
   acting: boolean
@@ -180,6 +196,7 @@ function QueueCard({
   onMoveToDraft?: () => void
   onMoveToReview?: () => void
   onDelete: () => void
+  onMark: (mark: number) => void
 }) {
   const typeBadge = TYPE_BADGE[item.type] ?? TYPE_BADGE.Thought
   const preview = item.body.length > 160 ? item.body.slice(0, 160) + '…' : item.body
@@ -211,6 +228,20 @@ function QueueCard({
         {item.author && (
           <p className="text-zinc-700 text-xs italic mt-1">— {item.author}</p>
         )}
+
+        <div className="flex items-center gap-1 mt-2">
+          {[1, 2, 3].map((m) => (
+            <button
+              key={m}
+              onClick={() => onMark(m)}
+              title={m === 1 ? 'Low' : m === 2 ? 'Medium' : 'High'}
+              className={`text-[10px] w-6 h-5 rounded flex items-center justify-center border transition-all ${item.mark === m ? (m === 3 ? 'border-amber-500/60 text-amber-400 bg-amber-500/10' : m === 1 ? 'border-zinc-600 text-zinc-400 bg-zinc-800/60' : 'border-zinc-500/60 text-zinc-300 bg-zinc-700/40') : 'border-zinc-800 text-zinc-700 hover:border-zinc-600 hover:text-zinc-500'}`}
+            >
+              {m}
+            </button>
+          ))}
+          <span className="text-[10px] text-zinc-700 ml-0.5">mark</span>
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5 shrink-0 justify-center">

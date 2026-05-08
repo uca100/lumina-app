@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
 import { classifyAndSave } from '@/lib/ingest/save'
-import { validateIngestKey } from '@/lib/ingest/auth'
+import { getUserByIngestKey } from '@/lib/ingest/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
-  if (!validateIngestKey(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const user = getUserByIngestKey(request)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
   const text = body?.body as string | undefined
@@ -18,6 +17,7 @@ export async function POST(request: Request) {
     title: body?.title,
     type: body?.type,
     tags: Array.isArray(body?.tags) ? body.tags : undefined,
+    userId: user.id,
   })
 
   const status = result.duplicate ? 200 : 201

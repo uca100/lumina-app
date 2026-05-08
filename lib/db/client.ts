@@ -29,11 +29,25 @@ function ensureSchema(sqlite: Database.Database) {
     `ALTER TABLE reminder_schedules ADD COLUMN daily_fire_minutes TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE reminder_schedules ADD COLUMN daily_fire_date TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'draft'`,
+    `ALTER TABLE items ADD COLUMN mark INTEGER NOT NULL DEFAULT 2`,
+    `ALTER TABLE items ADD COLUMN user_id TEXT`,
+    `ALTER TABLE reminder_schedules ADD COLUMN user_id TEXT`,
   ]) {
     try { sqlite.exec(sql) } catch { /* column already exists */ }
   }
 
   sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      ntfy_topic TEXT,
+      telegram_chat_id INTEGER,
+      ingest_api_key TEXT NOT NULL UNIQUE,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS items (
       id TEXT PRIMARY KEY,
       title TEXT,
@@ -50,6 +64,7 @@ function ensureSchema(sqlite: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_items_type ON items(type);
     CREATE INDEX IF NOT EXISTS idx_items_synced ON items(synced);
     CREATE INDEX IF NOT EXISTS idx_items_created ON items(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_items_user ON items(user_id);
 
     CREATE TABLE IF NOT EXISTS sync_meta (
       id TEXT PRIMARY KEY,

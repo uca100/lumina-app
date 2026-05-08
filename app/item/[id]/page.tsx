@@ -6,9 +6,15 @@ import { TagBadge } from '@/components/TagBadge'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
 import { isRTL } from '@/lib/utils/rtl'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
 const STATUSES = ['draft', 'review', 'published'] as const
+const MARKS = [
+  { value: 1, label: 'Low',    description: 'Less frequent in shuffle' },
+  { value: 2, label: 'Medium', description: 'Default frequency'        },
+  { value: 3, label: 'High',   description: 'Most frequent in shuffle'  },
+] as const
 
 const STATUS_LABELS: Record<string, { label: string; description: string; style: string; active: string }> = {
   draft:     { label: 'Draft',     description: 'Not ready yet',       style: 'border-zinc-300 text-zinc-400 bg-white hover:border-zinc-400',          active: 'bg-zinc-600 text-white border-zinc-600' },
@@ -49,6 +55,7 @@ export default function ItemPage() {
   const [tagInput, setTagInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const currentUser = useCurrentUser()
 
   useEffect(() => {
     fetch(`/lumina/api/items/${id}`).then((r) => r.json()).then((data) => {
@@ -101,9 +108,12 @@ export default function ItemPage() {
       {/* Header */}
       <header className="sticky top-0 z-10 backdrop-blur-md bg-white/70 border-b border-stone-200/60 px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <Link href={backHref} className="flex items-center gap-1.5 text-stone-400 hover:text-stone-700 text-sm transition-colors">
-            {backLabel}
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href={backHref} className="flex items-center gap-1.5 text-stone-400 hover:text-stone-700 text-sm transition-colors">
+              {backLabel}
+            </Link>
+            {currentUser && <span className="text-[11px] text-stone-400">{currentUser.username}</span>}
+          </div>
           <div className="flex gap-2">
             {!editing && (
               <>
@@ -150,6 +160,11 @@ export default function ItemPage() {
                 )}
                 {item.status === 'published' && (
                   <span className="text-[10px] font-medium uppercase tracking-widest px-2.5 py-1 rounded-full border border-emerald-300 text-emerald-600 bg-emerald-50">Published</span>
+                )}
+                {item.mark != null && item.mark !== 2 && (
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${item.mark === 3 ? 'border-amber-300 text-amber-600 bg-amber-50' : 'border-zinc-300 text-zinc-500 bg-zinc-50'}`} title={item.mark === 1 ? 'Low priority' : 'High priority'}>
+                    {'●'.repeat(item.mark)}{'○'.repeat(3 - item.mark)} {item.mark === 3 ? 'High' : 'Low'}
+                  </span>
                 )}
                 <span className="text-xs text-stone-300">{new Date(item.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                 {item.synced === 0 && item.status === 'published' && <span className="text-xs text-amber-500 ml-auto">● Pending sync</span>}
@@ -206,6 +221,28 @@ export default function ItemPage() {
                     </button>
                   )
                 })}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] text-stone-400 mb-2 uppercase tracking-widest">Mark</label>
+              <div className="flex flex-wrap gap-2">
+                {MARKS.map(({ value, label, description }) => (
+                  <button
+                    key={value}
+                    onClick={() => setForm({ ...form, mark: value })}
+                    className={`px-4 py-1.5 rounded-full text-sm border font-medium transition-all ${
+                      (form.mark ?? 2) === value
+                        ? value === 3 ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                          : value === 1 ? 'bg-zinc-500 text-white border-zinc-500'
+                          : 'bg-stone-400 text-white border-stone-400'
+                        : 'border-stone-200 text-stone-400 bg-white hover:border-amber-300'
+                    }`}
+                  >
+                    {label}
+                    <span className="ml-1.5 text-[10px] opacity-60">{description}</span>
+                  </button>
+                ))}
               </div>
             </div>
 

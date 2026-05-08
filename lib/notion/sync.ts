@@ -1,7 +1,7 @@
 import { Client } from '@notionhq/client'
 import { db } from '../db/client'
 import { items, syncMeta } from '../db/schema'
-import { eq, isNotNull, and } from 'drizzle-orm'
+import { eq, isNotNull, isNull, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY })
@@ -59,7 +59,7 @@ export async function pushToNotion() {
   if (!DB_ID) return
 
   const database = db()
-  const pending = database.select().from(items).where(and(eq(items.synced, 0), eq(items.status, 'published'))).all()
+  const pending = database.select().from(items).where(and(eq(items.synced, 0), eq(items.status, 'published'), isNull(items.userId))).all()
 
   for (const item of pending) {
     const tags = JSON.parse(item.tags) as string[]

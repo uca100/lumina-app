@@ -40,9 +40,20 @@ var schema_exports = {};
 __export(schema_exports, {
   items: () => items,
   reminderSchedules: () => reminderSchedules,
-  syncMeta: () => syncMeta
+  syncMeta: () => syncMeta,
+  users: () => users
 });
 var import_sqlite_core = require("drizzle-orm/sqlite-core");
+var users = (0, import_sqlite_core.sqliteTable)("users", {
+  id: (0, import_sqlite_core.text)("id").primaryKey(),
+  username: (0, import_sqlite_core.text)("username").notNull().unique(),
+  email: (0, import_sqlite_core.text)("email").notNull().unique(),
+  passwordHash: (0, import_sqlite_core.text)("password_hash").notNull(),
+  ntfyTopic: (0, import_sqlite_core.text)("ntfy_topic"),
+  telegramChatId: (0, import_sqlite_core.integer)("telegram_chat_id"),
+  ingestApiKey: (0, import_sqlite_core.text)("ingest_api_key").notNull().unique(),
+  createdAt: (0, import_sqlite_core.integer)("created_at").notNull()
+});
 var items = (0, import_sqlite_core.sqliteTable)("items", {
   id: (0, import_sqlite_core.text)("id").primaryKey(),
   title: (0, import_sqlite_core.text)("title"),
@@ -53,6 +64,9 @@ var items = (0, import_sqlite_core.sqliteTable)("items", {
   tags: (0, import_sqlite_core.text)("tags").notNull().default("[]"),
   summary: (0, import_sqlite_core.text)("summary"),
   pinned: (0, import_sqlite_core.integer)("pinned").notNull().default(0),
+  status: (0, import_sqlite_core.text)("status", { enum: ["draft", "review", "published"] }).notNull().default("draft"),
+  mark: (0, import_sqlite_core.integer)("mark").notNull().default(2),
+  userId: (0, import_sqlite_core.text)("user_id"),
   notionId: (0, import_sqlite_core.text)("notion_id"),
   synced: (0, import_sqlite_core.integer)("synced").notNull().default(0),
   createdAt: (0, import_sqlite_core.integer)("created_at").notNull(),
@@ -60,7 +74,8 @@ var items = (0, import_sqlite_core.sqliteTable)("items", {
 }, (t) => [
   (0, import_sqlite_core.index)("idx_items_type").on(t.type),
   (0, import_sqlite_core.index)("idx_items_synced").on(t.synced),
-  (0, import_sqlite_core.index)("idx_items_created").on(t.createdAt)
+  (0, import_sqlite_core.index)("idx_items_created").on(t.createdAt),
+  (0, import_sqlite_core.index)("idx_items_user").on(t.userId)
 ]);
 var syncMeta = (0, import_sqlite_core.sqliteTable)("sync_meta", {
   id: (0, import_sqlite_core.text)("id").primaryKey(),
@@ -79,6 +94,7 @@ var reminderSchedules = (0, import_sqlite_core.sqliteTable)("reminder_schedules"
   count: (0, import_sqlite_core.integer)("count").notNull().default(1),
   enabled: (0, import_sqlite_core.integer)("enabled").notNull().default(1),
   chatId: (0, import_sqlite_core.integer)("chat_id"),
+  userId: (0, import_sqlite_core.text)("user_id"),
   dailyFireMinutes: (0, import_sqlite_core.text)("daily_fire_minutes").notNull().default("[]"),
   dailyFireDate: (0, import_sqlite_core.text)("daily_fire_date").notNull().default(""),
   createdAt: (0, import_sqlite_core.integer)("created_at").notNull()
@@ -105,7 +121,11 @@ function ensureSchema(sqlite) {
     `ALTER TABLE items ADD COLUMN summary TEXT`,
     `ALTER TABLE items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE reminder_schedules ADD COLUMN daily_fire_minutes TEXT NOT NULL DEFAULT '[]'`,
-    `ALTER TABLE reminder_schedules ADD COLUMN daily_fire_date TEXT NOT NULL DEFAULT ''`
+    `ALTER TABLE reminder_schedules ADD COLUMN daily_fire_date TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'draft'`,
+    `ALTER TABLE items ADD COLUMN mark INTEGER NOT NULL DEFAULT 2`,
+    `ALTER TABLE items ADD COLUMN user_id TEXT`,
+    `ALTER TABLE reminder_schedules ADD COLUMN user_id TEXT`
   ]) {
     try {
       sqlite.exec(sql);
@@ -113,6 +133,17 @@ function ensureSchema(sqlite) {
     }
   }
   sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      ntfy_topic TEXT,
+      telegram_chat_id INTEGER,
+      ingest_api_key TEXT NOT NULL UNIQUE,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS items (
       id TEXT PRIMARY KEY,
       title TEXT,
@@ -129,6 +160,7 @@ function ensureSchema(sqlite) {
     CREATE INDEX IF NOT EXISTS idx_items_type ON items(type);
     CREATE INDEX IF NOT EXISTS idx_items_synced ON items(synced);
     CREATE INDEX IF NOT EXISTS idx_items_created ON items(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_items_user ON items(user_id);
 
     CREATE TABLE IF NOT EXISTS sync_meta (
       id TEXT PRIMARY KEY,
@@ -214,7 +246,7 @@ function setSyncMeta(key, value) {
 async function pushToNotion() {
   if (!DB_ID) return;
   const database = db();
-  const pending = database.select().from(items).where((0, import_drizzle_orm.eq)(items.synced, 0)).all();
+  const pending = database.select().from(items).where((0, import_drizzle_orm.and)((0, import_drizzle_orm.eq)(items.synced, 0), (0, import_drizzle_orm.eq)(items.status, "published"), (0, import_drizzle_orm.isNull)(items.userId))).all();
   for (const item of pending) {
     const tags = JSON.parse(item.tags);
     const props = {
@@ -224,6 +256,7 @@ async function pushToNotion() {
       Body: { rich_text: [{ text: { content: item.body.slice(0, 2e3) } }] },
       Tags: { multi_select: tags.map((t) => ({ name: t })) },
       Date: { date: { start: new Date(item.createdAt).toISOString().split("T")[0] } },
+      Status: { select: { name: item.status } },
       Synced: { checkbox: true }
     };
     if (item.author) props.Author = { rich_text: [{ text: { content: item.author } }] };
@@ -391,6 +424,7 @@ async function classifyAndSave(body, source, meta) {
   tags = [.../* @__PURE__ */ new Set([...meta?.tags ?? [], ...classified.tags])];
   title = meta?.title ?? classified.title;
   summary = classified.summary;
+  const status = source === "manual" ? "draft" : "review";
   db().insert(items).values({
     id,
     title,
@@ -400,6 +434,8 @@ async function classifyAndSave(body, source, meta) {
     author,
     summary,
     tags: JSON.stringify(tags),
+    status,
+    userId: meta?.userId ?? null,
     synced: 0,
     createdAt: now,
     updatedAt: now
@@ -487,8 +523,8 @@ var TYPE_EMOJI = {
   Habit: "seedling",
   Pattern: "diamond_shape_with_a_dot_inside"
 };
-async function sendNtfy(message, title, type, clickUrl) {
-  const topic = process.env.NTFY_TOPIC;
+async function sendNtfy(message, title, type, clickUrl, topicOverride) {
+  const topic = topicOverride ?? process.env.NTFY_TOPIC;
   if (!topic) return;
   const tag = (type && TYPE_EMOJI[type]) ?? "sparkles";
   const payload = {
@@ -512,37 +548,55 @@ async function sendNtfy(message, title, type, clickUrl) {
   }
 }
 
+// lib/utils/weightedPick.ts
+function weightedPick(items2) {
+  const weights = items2.map((i) => Math.max(i.mark, 1));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < items2.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return items2[i];
+  }
+  return items2[items2.length - 1];
+}
+
 // lib/scheduler/jobs.ts
 var NTFY_MAX_BODY = 400;
-async function fireReminder(schedule, chatId) {
+async function fireReminder(schedule, user) {
+  const ntfyTopic = user?.ntfyTopic ?? process.env.NTFY_TOPIC ?? null;
+  const telegramChatId = user?.telegramChatId ?? schedule.chatId ?? null;
+  if (!ntfyTopic && !telegramChatId) return;
   let pick;
   if (schedule.itemId) {
     pick = db().select().from(items).where((0, import_drizzle_orm3.eq)(items.id, schedule.itemId)).get();
     if (!pick) return;
   } else {
     const types = JSON.parse(schedule.typesFilter);
-    const all = types.length ? db().select().from(items).where((0, import_drizzle_orm3.inArray)(items.type, types)).all() : db().select().from(items).all();
+    const visibility = user ? (0, import_drizzle_orm3.or)((0, import_drizzle_orm3.eq)(items.userId, user.id), (0, import_drizzle_orm3.isNull)(items.userId)) : (0, import_drizzle_orm3.isNull)(items.userId);
+    const all = types.length ? db().select().from(items).where((0, import_drizzle_orm3.and)(visibility, (0, import_drizzle_orm3.eq)(items.status, "published"), (0, import_drizzle_orm3.inArray)(items.type, types))).all() : db().select().from(items).where((0, import_drizzle_orm3.and)(visibility, (0, import_drizzle_orm3.eq)(items.status, "published"))).all();
     if (!all.length) return;
-    pick = all[Math.floor(Math.random() * all.length)];
+    pick = weightedPick(all);
   }
   let notifBody = pick.body;
   if (notifBody.length > NTFY_MAX_BODY) {
     notifBody = notifBody.slice(0, NTFY_MAX_BODY - 1) + "\u2026";
   }
-  const lines = [
-    notifBody,
-    ...pick.author ? [`\u2014 ${pick.author}`] : []
-  ];
-  const text2 = lines.join("\n");
-  if (process.env.NTFY_TOPIC) {
-    const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
-    const isAffirmation = pick.type === "Affirmation";
-    const clickUrl = isAffirmation ? `${baseUrl}/lumina/affirmations` : `${baseUrl}/lumina/view/${pick.id}`;
-    const notifTitle = isAffirmation ? "Today's Affirmations" : pick.title ?? void 0;
-    await sendNtfy(text2, notifTitle, pick.type ?? void 0, clickUrl);
-  } else if (chatId) {
-    await sendMessage(chatId, text2);
+  const text2 = [notifBody, ...pick.author ? [`\u2014 ${pick.author}`] : []].join("\n");
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+  const isAffirmation = pick.type === "Affirmation";
+  const clickUrl = isAffirmation ? `${baseUrl}/lumina/affirmations` : `${baseUrl}/lumina/view/${pick.id}`;
+  const notifTitle = isAffirmation ? "Today's Affirmations" : pick.title ?? void 0;
+  if (ntfyTopic) {
+    await sendNtfy(text2, notifTitle, pick.type ?? void 0, clickUrl, ntfyTopic);
+  } else if (telegramChatId) {
+    await sendMessage(telegramChatId, text2);
   }
+}
+function resolveUser(schedule) {
+  if (schedule.userId) {
+    return db().select().from(users).where((0, import_drizzle_orm3.eq)(users.id, schedule.userId)).get() ?? null;
+  }
+  return null;
 }
 function randomMinutesInWindow(count, windowStart) {
   const END = 22 * 60;
@@ -561,8 +615,7 @@ function todayStr() {
   return (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 }
 async function scheduleSingleDailyRandom(schedule) {
-  const meta = db().select().from(syncMeta).where((0, import_drizzle_orm3.eq)(syncMeta.key, "telegram_chat_id")).get();
-  const chatId = schedule.chatId ?? (meta ? Number(meta.value) : null);
+  const user = resolveUser(schedule);
   const now = /* @__PURE__ */ new Date();
   const today = todayStr();
   const currentMinute = now.getHours() * 60 + now.getMinutes();
@@ -572,7 +625,7 @@ async function scheduleSingleDailyRandom(schedule) {
     if (pastDue.length > 0) {
       const remaining = fireMinutes.filter((m2) => m2 > currentMinute);
       db().update(reminderSchedules).set({ dailyFireMinutes: JSON.stringify(remaining) }).where((0, import_drizzle_orm3.eq)(reminderSchedules.id, schedule.id)).run();
-      await fireReminder(schedule, chatId).catch((err) => console.error("[Lumina] Catch-up reminder error:", schedule.id, err));
+      await fireReminder(schedule, user).catch((err) => console.error("[Lumina] Catch-up reminder error:", schedule.id, err));
     }
     return;
   }
@@ -588,9 +641,7 @@ async function scheduleDailyScatter(schedule) {
   const today = todayStr();
   const currentMinute = now.getHours() * 60 + now.getMinutes();
   const fireMinutes = JSON.parse(schedule.dailyFireMinutes);
-  if (schedule.dailyFireDate === today && fireMinutes.length > 0) {
-    return;
-  }
+  if (schedule.dailyFireDate === today && fireMinutes.length > 0) return;
   const windowStart = Math.max(8 * 60, currentMinute + 1);
   const count = schedule.count ?? 1;
   const minutes = randomMinutesInWindow(count, windowStart);
@@ -600,13 +651,9 @@ async function scheduleDailyScatter(schedule) {
 }
 function scheduleDailyRandoms() {
   const randoms = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)((0, import_drizzle_orm3.eq)(reminderSchedules.mode, "daily_random"), (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1))).all();
-  for (const schedule of randoms) {
-    scheduleSingleDailyRandom(schedule).catch(console.error);
-  }
+  for (const schedule of randoms) scheduleSingleDailyRandom(schedule).catch(console.error);
   const scatters = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)((0, import_drizzle_orm3.eq)(reminderSchedules.mode, "daily_scatter"), (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1))).all();
-  for (const schedule of scatters) {
-    scheduleDailyScatter(schedule).catch(console.error);
-  }
+  for (const schedule of scatters) scheduleDailyScatter(schedule).catch(console.error);
 }
 function initReminderJobs() {
   import_node_cron.default.schedule("* * * * *", async () => {
@@ -615,37 +662,22 @@ function initReminderJobs() {
     const m = now.getMinutes();
     const today = todayStr();
     const currentMinute = h * 60 + m;
-    const due = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)(
-      (0, import_drizzle_orm3.eq)(reminderSchedules.hour, h),
-      (0, import_drizzle_orm3.eq)(reminderSchedules.minute, m),
-      (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1),
-      (0, import_drizzle_orm3.eq)(reminderSchedules.mode, "fixed")
-    )).all();
-    const meta = db().select().from(syncMeta).where((0, import_drizzle_orm3.eq)(syncMeta.key, "telegram_chat_id")).get();
-    const globalChatId = meta ? Number(meta.value) : null;
+    const due = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)((0, import_drizzle_orm3.eq)(reminderSchedules.hour, h), (0, import_drizzle_orm3.eq)(reminderSchedules.minute, m), (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1), (0, import_drizzle_orm3.eq)(reminderSchedules.mode, "fixed"))).all();
     for (const schedule of due) {
       try {
-        const chatId = schedule.chatId ?? globalChatId;
-        if (!chatId && !process.env.NTFY_TOPIC) continue;
-        await fireReminder(schedule, chatId);
+        await fireReminder(schedule, resolveUser(schedule));
       } catch (err) {
         console.error("[Lumina] Reminder error:", schedule.id, err);
       }
     }
-    const dailies = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)(
-      (0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1),
-      (0, import_drizzle_orm3.inArray)(reminderSchedules.mode, ["daily_random", "daily_scatter"])
-    )).all();
+    const dailies = db().select().from(reminderSchedules).where((0, import_drizzle_orm3.and)((0, import_drizzle_orm3.eq)(reminderSchedules.enabled, 1), (0, import_drizzle_orm3.inArray)(reminderSchedules.mode, ["daily_random", "daily_scatter"]))).all();
     for (const schedule of dailies) {
       if (schedule.dailyFireDate !== today) continue;
       const fireMinutes = JSON.parse(schedule.dailyFireMinutes);
       if (!fireMinutes.includes(currentMinute)) continue;
-      const remaining = fireMinutes.filter((mm) => mm !== currentMinute);
-      db().update(reminderSchedules).set({ dailyFireMinutes: JSON.stringify(remaining) }).where((0, import_drizzle_orm3.eq)(reminderSchedules.id, schedule.id)).run();
+      db().update(reminderSchedules).set({ dailyFireMinutes: JSON.stringify(fireMinutes.filter((mm) => mm !== currentMinute)) }).where((0, import_drizzle_orm3.eq)(reminderSchedules.id, schedule.id)).run();
       try {
-        const chatId = schedule.chatId ?? globalChatId;
-        if (!chatId && !process.env.NTFY_TOPIC) continue;
-        await fireReminder(schedule, chatId);
+        await fireReminder(schedule, resolveUser(schedule));
       } catch (err) {
         console.error("[Lumina] Reminder error:", schedule.id, err);
       }

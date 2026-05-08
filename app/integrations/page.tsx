@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { UserBadge } from '@/components/UserBadge'
 
 interface Config {
   ingestKey: string
@@ -10,6 +11,7 @@ interface Config {
   baseUrl: string
   ntfyTopic: string
   telegramBotUsername: string | null
+  telegramChatId: number | null
   version: string
 }
 
@@ -20,12 +22,18 @@ export default function IntegrationsPage() {
   const [regResult, setRegResult] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/lumina/api/config')
-      .then(r => r.json())
-      .then(d => {
-        if (!d.baseUrl) d.baseUrl = window.location.origin
-        setConfig(d)
-      })
+    Promise.all([
+      fetch('/lumina/api/config').then(r => r.json()),
+      fetch('/lumina/api/auth/me').then(r => r.json()),
+    ]).then(([cfg, me]) => {
+      if (!cfg.baseUrl) cfg.baseUrl = window.location.origin
+      if (me?.ingestApiKey) {
+        cfg.ingestKey = me.ingestApiKey
+        cfg.ntfyTopic = me.ntfyTopic ?? cfg.ntfyTopic
+        cfg.telegramChatId = me.telegramChatId ?? null
+      }
+      setConfig(cfg)
+    })
   }, [])
 
   const copyToClipboard = (text: string, label: string) => {
@@ -62,9 +70,12 @@ export default function IntegrationsPage() {
             <span className="text-amber-500 text-xl group-hover:scale-110 transition-transform">✦</span>
             <h1 className="font-serif text-2xl font-bold text-white tracking-tight">Lumina</h1>
           </Link>
-          <Link href="/" className="text-sm text-zinc-400 hover:text-white transition-colors">
-            ← Exit
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-sm text-zinc-400 hover:text-white transition-colors">
+              ← Exit
+            </Link>
+            <UserBadge />
+          </div>
         </div>
       </header>
 

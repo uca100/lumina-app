@@ -17,6 +17,7 @@ export interface Item {
   synced: number
   pinned: number
   status: 'draft' | 'review' | 'published'
+  mark: number
   createdAt: number
 }
 
@@ -69,6 +70,11 @@ export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDelete
             {item.status !== 'published' && (
               <span className={`text-[10px] font-medium uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusCfg.badge}`}>
                 {statusCfg.label}
+              </span>
+            )}
+            {item.mark != null && item.mark !== 2 && (
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${item.mark === 3 ? 'text-amber-400' : 'text-zinc-600'}`} title={item.mark === 1 ? 'Low priority' : item.mark === 3 ? 'High priority' : ''}>
+                {'●'.repeat(item.mark)}{'○'.repeat(3 - item.mark)}
               </span>
             )}
           </div>
