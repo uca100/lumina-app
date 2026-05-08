@@ -3,6 +3,16 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.9.1] - 2026-05-08
+
+### Fixed
+- Proxy (auth middleware) now correctly intercepts unauthenticated requests — root cause was that matcher paths must be WITHOUT the basePath prefix (`/lumina`); Next.js prepends basePath at build time, so `/lumina/:path*` compiled to a regex matching `/lumina/lumina/:path*` (never matched anything)
+- Redirect URL from proxy was doubled (`/lumina/lumina/login`) — fixed by setting `loginUrl.pathname = '/login'` (without basePath) since Next.js adds basePath automatically
+- Added `Cache-Control: no-cache, no-store, must-revalidate` to nginx lumina block (matching health-os) to prevent cached responses from bypassing the proxy
+- Backfilled all existing `reminder_schedules` rows with userId `uri` so per-user scheduling works correctly
+
+---
+
 ## [0.9.0] - 2026-05-08
 
 ### Added

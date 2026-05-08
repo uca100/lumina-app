@@ -1,30 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth/session'
+import { jwtVerify } from 'jose'
 
+const COOKIE = 'lumina_session'
+const SECRET = new TextEncoder().encode(process.env.SESSION_SECRET ?? 'lumina-dev-secret-change-in-production')
+
+async function verifySession(token: string): Promise<boolean> {
+  try {
+    await jwtVerify(token, SECRET)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Paths are WITHOUT basePath — NextURL.pathname in proxy includes basePath,
+// but we strip it to compare against the base-stripped path for public routes.
 const PUBLIC_PATHS = [
-  '/lumina/login',
-  '/lumina/api/auth/login',
-  '/lumina/api/auth/setup',
-  '/lumina/api/ingest/',
-  '/lumina/view/',
-  '/lumina/_next/',
+  '/login',
+  '/api/auth/login',
+  '/api/auth/setup',
+  '/api/ingest/',
+  '/view/',
   '/_next/',
 ]
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
+  // Strip basePath (/lumina) from pathname for public-path comparison
+  const basePath = '/lumina'
+  const strippedPath = pathname.startsWith(basePath)
+    ? pathname.slice(basePath.length) || '/'
+    : pathname
 
-  const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
+  const isPublic = PUBLIC_PATHS.some(p => strippedPath.startsWith(p))
   if (isPublic) return NextResponse.next()
 
-  const token = req.cookies.get('lumina_session')?.value
-  const userId = token ? await verifyToken(token) : null
+  const token = req.cookies.get(COOKIE)?.value
+  const valid = token ? await verifySession(token) : false
 
-  if (!userId) {
-    const loginUrl = new URL('/lumina/login', req.url)
-    // Strip basePath so router.push(from) after login doesn't double-prefix
-    const from = pathname.startsWith('/lumina') ? pathname.slice('/lumina'.length) || '/' : pathname
-    loginUrl.searchParams.set('from', from)
+  if (!valid) {
+    // Clone nextUrl to preserve correct external host/protocol.
+    // Set pathname WITHOUT basePath — Next.js prepends basePath automatically.
+    const loginUrl = req.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.searchParams.set('from', strippedPath)
     return NextResponse.redirect(loginUrl)
   }
 
@@ -32,5 +51,6 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/lumina', '/lumina/:path*'],
+  // Matcher paths are WITHOUT the basePath prefix (/lumina is stripped by Next.js at build time)
+  matcher: ['/', '/:path*'],
 }
