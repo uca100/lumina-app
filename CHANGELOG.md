@@ -3,6 +3,23 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.9.0] - 2026-05-08
+
+### Added
+- Multi-user support: each user has private items + access to the shared item pool (userId IS NULL)
+- User accounts with bcryptjs password hashing and JWT session cookies (7-day expiry)
+- Per-user delivery: each user has their own `ntfyTopic` and `telegramChatId` in the users table
+- Per-user affirmation order (stored per-user in syncMeta)
+- Per-user reminder schedules with ownership verification
+- Login page, setup bootstrap route (first user only), admin users page at `/admin/users`
+- Item marks 1–3 (Low/Medium/High) for weighted random selection
+- Weighted pick algorithm: mark-3 items appear 3× more than mark-1 in shuffle/reminders
+- Inline mark toggle on Inbox cards; mark selector (Low/Med/High) on the edit page
+- `UserBadge` component on all page headers — shows username + Sign out button
+- Notion sync now restricted to shared items only (userId IS NULL)
+- Ingest routes resolve user from ingestApiKey (shortcut) or chatId (Telegram) with backwards-compat fallback
+- Replaced deprecated Next.js `middleware.ts` with `proxy.ts` (Next.js 16 convention)
+
 ## [0.8.1] - 2026-05-08
 
 ### Fixed
