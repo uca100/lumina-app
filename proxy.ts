@@ -22,7 +22,9 @@ export async function proxy(req: NextRequest) {
 
   if (!userId) {
     const loginUrl = new URL('/lumina/login', req.url)
-    loginUrl.searchParams.set('from', pathname)
+    // Strip basePath so router.push(from) after login doesn't double-prefix
+    const from = pathname.startsWith('/lumina') ? pathname.slice('/lumina'.length) || '/' : pathname
+    loginUrl.searchParams.set('from', from)
     return NextResponse.redirect(loginUrl)
   }
 
@@ -30,5 +32,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/lumina/:path*'],
+  matcher: ['/lumina', '/lumina/:path*'],
 }
