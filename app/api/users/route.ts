@@ -16,10 +16,11 @@ export async function GET(req: NextRequest) {
     email: users.email,
     ntfyTopic: users.ntfyTopic,
     telegramChatId: users.telegramChatId,
+    ingestApiKey: users.ingestApiKey,
     createdAt: users.createdAt,
   }).from(users).all()
 
-  return NextResponse.json(all)
+  return NextResponse.json({ users: all })
 }
 
 export async function POST(req: NextRequest) {
