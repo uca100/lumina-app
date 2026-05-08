@@ -3,6 +3,16 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.8.1] - 2026-05-08
+
+### Fixed
+- All areas of the app now gate on `published` status only — affirmations page, shuffle/random, reminders/ntfy scheduler, and reminders random endpoint all skip draft/review items
+- Main feed defaults to showing `published` items; status filter row still lets you browse draft/review
+- Edit page from Inbox now shows "← Inbox" back button and returns to `/queue` instead of the feed
+- Affirmations settings page bug: pinned items older than the 100-item API limit were invisible in the Daily Set — fixed by fetching pinned items separately with `?pinned=1` so all pinned items always load regardless of age
+
+---
+
 ## [0.8.0] - 2026-05-07
 
 ### Added

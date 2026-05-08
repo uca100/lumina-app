@@ -72,7 +72,8 @@ function ItemRow({ item, actions }: { item: Item; actions: React.ReactNode }) {
 }
 
 export default function AffirmationsSettingsPage() {
-  const [allItems, setAllItems] = useState<Item[]>([])
+  const [pinnedItems, setPinnedItems] = useState<Item[]>([])
+  const [libraryItems, setLibraryItems] = useState<Item[]>([])
   const [order, setOrder] = useState<string[]>([])
   const [reminder, setReminder] = useState<Reminder | null>(null)
   const [reminderTime, setReminderTime] = useState('08:00')
@@ -84,11 +85,13 @@ export default function AffirmationsSettingsPage() {
 
   useEffect(() => {
     Promise.all([
+      fetch('/lumina/api/items?pinned=1').then((r) => r.json()),
       fetch('/lumina/api/items').then((r) => r.json()),
       fetch('/lumina/api/affirmations/order').then((r) => r.json()),
       fetch('/lumina/api/reminders').then((r) => r.json()),
-    ]).then(([itemsData, orderData, remindersData]: [Item[], { order: string[] }, { schedules: Reminder[] }]) => {
-      setAllItems(itemsData)
+    ]).then(([pinnedData, itemsData, orderData, remindersData]: [Item[], Item[], { order: string[] }, { schedules: Reminder[] }]) => {
+      setPinnedItems(pinnedData)
+      setLibraryItems(itemsData.filter((a) => a.pinned !== 1))
       setOrder(orderData.order)
       // Find the affirmation daily reminder
       const affReminder = remindersData.schedules.find(
@@ -103,8 +106,8 @@ export default function AffirmationsSettingsPage() {
     })
   }, [])
 
-  const pinned = allItems.filter((a) => a.pinned === 1)
-  const unpinned = allItems.filter((a) => a.pinned !== 1)
+  const pinned = pinnedItems
+  const unpinned = libraryItems
   const randomPool = unpinned.filter((a) => a.type === 'Affirmation')
 
   const orderedPinned = [
@@ -117,7 +120,9 @@ export default function AffirmationsSettingsPage() {
     await setPinned(item.id, 1, item)
     const newOrder = [...order, item.id]
     await saveOrder(newOrder)
-    setAllItems((prev) => prev.map((a) => a.id === item.id ? { ...a, pinned: 1 } : a))
+    const pinned = { ...item, pinned: 1 }
+    setPinnedItems((prev) => [...prev, pinned])
+    setLibraryItems((prev) => prev.filter((a) => a.id !== item.id))
     setOrder(newOrder)
     setSaving(null)
   }
@@ -127,7 +132,8 @@ export default function AffirmationsSettingsPage() {
     await setPinned(item.id, 0, item)
     const newOrder = order.filter((id) => id !== item.id)
     await saveOrder(newOrder)
-    setAllItems((prev) => prev.map((a) => a.id === item.id ? { ...a, pinned: 0 } : a))
+    setPinnedItems((prev) => prev.filter((a) => a.id !== item.id))
+    setLibraryItems((prev) => [...prev, { ...item, pinned: 0 }])
     setOrder(newOrder)
     setSaving(null)
   }
@@ -322,12 +328,12 @@ export default function AffirmationsSettingsPage() {
         </section>
 
         {/* ── Add from Library ── */}
-        {unpinned.filter((a) => a.type !== 'Affirmation').length > 0 && (
+        {libraryItems.filter((a) => a.type !== 'Affirmation').length > 0 && (
           <section>
             <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Add from Library</p>
             <p className="text-xs text-stone-400 mb-4">Other items you can add to the daily set</p>
             <div className="flex flex-col gap-2">
-              {unpinned.filter((a) => a.type !== 'Affirmation').map((item) => (
+              {libraryItems.filter((a) => a.type !== 'Affirmation').map((item) => (
                 <ItemRow
                   key={item.id}
                   item={item}

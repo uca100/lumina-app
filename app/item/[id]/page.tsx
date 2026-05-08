@@ -40,6 +40,9 @@ export default function ItemPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const from = searchParams.get('from') ?? ''
+  const backHref = from === 'queue' ? '/queue' : '/'
+  const backLabel = from === 'queue' ? '← Inbox' : '← Lumina'
   const [item, setItem] = useState<Item | null>(null)
   const [editing, setEditing] = useState(searchParams.get('edit') === 'true')
   const [form, setForm] = useState<Partial<Item>>({})
@@ -98,8 +101,8 @@ export default function ItemPage() {
       {/* Header */}
       <header className="sticky top-0 z-10 backdrop-blur-md bg-white/70 border-b border-stone-200/60 px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-1.5 text-stone-400 hover:text-stone-700 text-sm transition-colors">
-            ← <span className="text-amber-500">✦</span> Lumina
+          <Link href={backHref} className="flex items-center gap-1.5 text-stone-400 hover:text-stone-700 text-sm transition-colors">
+            {backLabel}
           </Link>
           <div className="flex gap-2">
             {!editing && (

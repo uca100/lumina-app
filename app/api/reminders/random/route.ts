@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { items } from '@/lib/db/schema'
-import { inArray } from 'drizzle-orm'
+import { inArray, eq, and } from 'drizzle-orm'
 import { validateIngestKey } from '@/lib/ingest/auth'
 
 export async function GET(req: NextRequest) {
@@ -13,8 +13,8 @@ export async function GET(req: NextRequest) {
   const types = typeParam ? typeParam.split(',').map(s => s.trim()).filter(Boolean) : []
 
   const all = types.length
-    ? db().select().from(items).where(inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit')[])).all()
-    : db().select().from(items).all()
+    ? db().select().from(items).where(and(eq(items.status, 'published'), inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit')[]))).all()
+    : db().select().from(items).where(eq(items.status, 'published')).all()
 
   if (!all.length) return NextResponse.json({ error: 'No items' }, { status: 404 })
 

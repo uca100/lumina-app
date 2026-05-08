@@ -222,7 +222,7 @@ function QueueCard({
           {acting ? '…' : '✓ Publish'}
         </button>
         <Link
-          href={`/item/${item.id}?edit=true`}
+          href={`/item/${item.id}?edit=true&from=queue`}
           className="text-[11px] px-3 py-1.5 rounded-full border border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300 transition-all text-center"
         >
           Edit

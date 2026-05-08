@@ -17,8 +17,8 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, cha
   } else {
     const types: string[] = JSON.parse(schedule.typesFilter)
     const all = types.length
-      ? db().select().from(items).where(inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit')[])).all()
-      : db().select().from(items).all()
+      ? db().select().from(items).where(and(eq(items.status, 'published'), inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit')[]))).all()
+      : db().select().from(items).where(eq(items.status, 'published')).all()
     if (!all.length) return
     pick = all[Math.floor(Math.random() * all.length)]
   }

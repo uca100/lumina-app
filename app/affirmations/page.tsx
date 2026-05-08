@@ -26,8 +26,8 @@ export default function AffirmationsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/lumina/api/items?pinned=1').then((r) => r.json()),
-      fetch('/lumina/api/items?type=Affirmation').then((r) => r.json()),
+      fetch('/lumina/api/items?pinned=1&status=published').then((r) => r.json()),
+      fetch('/lumina/api/items?type=Affirmation&status=published').then((r) => r.json()),
       fetch('/lumina/api/affirmations/order').then((r) => r.json()),
     ]).then(([pinnedData, affirmationsData, orderData]: [Item[], Item[], { order: string[] }]) => {
       setPinnedItems(pinnedData)

@@ -24,7 +24,7 @@ export default function FeedPage() {
   const [q, setQ] = useState('')
   const [type, setType] = useState('')
   const [tag, setTag] = useState('')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState('published')
   const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
