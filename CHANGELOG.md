@@ -3,6 +3,14 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased] - 2026-05-10
+
+### Changed
+- One-time data operation: AI-classified and published all 24 inbox items (draft/review) — generated summaries and set status to published.
+- One-time data operation: AI-generated fresh titles for all 242 items in the database using a dedicated title prompt.
+
+---
+
 ## [0.9.3] - 2026-05-10
 
 ### Fixed
