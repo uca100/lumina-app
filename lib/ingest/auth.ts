@@ -12,7 +12,13 @@ function extractKey(request: NextRequest | Request): string | null {
 export function getUserByIngestKey(request: NextRequest | Request) {
   const key = extractKey(request)
   if (!key) return null
-  return db().select().from(users).where(eq(users.ingestApiKey, key)).get() ?? null
+  const user = db().select().from(users).where(eq(users.ingestApiKey, key)).get() ?? null
+  if (user) return user
+  // Fallback: legacy env key (pre-multi-user) → return first user
+  if (process.env.INGEST_API_KEY && key === process.env.INGEST_API_KEY) {
+    return db().select().from(users).get() ?? null
+  }
+  return null
 }
 
 export function validateIngestKey(request: NextRequest | Request): boolean {
