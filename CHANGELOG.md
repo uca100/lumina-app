@@ -3,6 +3,16 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.9.3] - 2026-05-10
+
+### Fixed
+- Flush action (Drafts → Lumina) returning 401: `getUserByIngestKey` had no fallback for the legacy `INGEST_API_KEY` env var from pre-multi-user setup. Added fallback so existing Drafts actions still work without reconfiguration.
+
+### Changed
+- One-time AI backfill: generated proper short titles and summaries for all 48 draft/review items (43 stories, 2 quotes, 3 draft stories) that had body text as their title.
+
+---
+
 ## [0.9.2] - 2026-05-09
 
 ### Fixed
