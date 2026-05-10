@@ -70,7 +70,6 @@ export async function pushToNotion() {
       Body: { rich_text: [{ text: { content: item.body.slice(0, 2000) } }] },
       Tags: { multi_select: tags.map((t) => ({ name: t })) },
       Date: { date: { start: new Date(item.createdAt).toISOString().split('T')[0] } },
-      Status: { select: { name: item.status } },
       Synced: { checkbox: true },
     }
     if (item.author) props.Author = { rich_text: [{ text: { content: item.author } }] }
