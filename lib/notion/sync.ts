@@ -1,7 +1,7 @@
 import { Client } from '@notionhq/client'
 import { db } from '../db/client'
-import { items, syncMeta } from '../db/schema'
-import { eq, isNotNull, isNull, and } from 'drizzle-orm'
+import { items, syncMeta, users } from '../db/schema'
+import { eq, isNotNull, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY })
@@ -59,10 +59,14 @@ export async function pushToNotion() {
   if (!DB_ID) return
 
   const database = db()
-  const pending = database.select().from(items).where(and(eq(items.synced, 0), eq(items.status, 'published'), isNull(items.userId))).all()
+  const allUsers = database.select({ id: users.id, username: users.username }).from(users).all()
+  const userMap = new Map(allUsers.map((u) => [u.id, u.username]))
+
+  const pending = database.select().from(items).where(and(eq(items.synced, 0), eq(items.status, 'published'))).all()
 
   for (const item of pending) {
     const tags = JSON.parse(item.tags) as string[]
+    const username = item.userId ? (userMap.get(item.userId) ?? 'unknown') : 'shared'
     const props: Record<string, unknown> = {
       Title: { title: [{ text: { content: item.title ?? item.body.slice(0, 80) } }] },
       Type: { select: { name: item.type } },
@@ -70,6 +74,7 @@ export async function pushToNotion() {
       Body: { rich_text: [{ text: { content: item.body.slice(0, 2000) } }] },
       Tags: { multi_select: tags.map((t) => ({ name: t })) },
       Date: { date: { start: new Date(item.createdAt).toISOString().split('T')[0] } },
+      User: { select: { name: username } },
       Synced: { checkbox: true },
     }
     if (item.author) props.Author = { rich_text: [{ text: { content: item.author } }] }
