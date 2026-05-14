@@ -103,49 +103,54 @@ export async function pullFromNotion() {
   const lastSync = getSyncMeta('lastPull')
   const database = db()
 
-  const response = await queryDatabase(
-    lastSync ? { timestamp: 'last_edited_time', last_edited_time: { after: lastSync } } : undefined
-  )
   type NotionPage = { id: string; object: string; properties: Record<string, { title?: { plain_text: string }[]; rich_text?: { plain_text: string }[]; select?: { name: string }; multi_select?: { name: string }[]; date?: { start: string }; checkbox?: boolean }> }
-  for (const _page of response.results) {
-    const page = _page as NotionPage
-    if (page.object !== 'page') continue
-    const p = page.properties
+  const filter = lastSync ? { timestamp: 'last_edited_time', last_edited_time: { after: lastSync } } : undefined
+  let cursor: string | undefined
 
-    const body = p.Body?.rich_text?.map((r) => r.plain_text).join('') ?? ''
-    if (!body) continue
+  do {
+    const response = await queryDatabase(filter, cursor)
 
-    const existing = database.select().from(items).where(eq(items.notionId, page.id)).get()
-    const now = Date.now()
-    const title = p.Title?.title?.map((t) => t.plain_text).join('') ?? null
-    const type = (p.Type?.select?.name as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit') ?? 'Thought'
-    const source = (p.Source?.select?.name as 'manual' | 'whatsapp' | 'email' | 'voice') ?? 'manual'
-    const author = p.Author?.rich_text?.map((r) => r.plain_text).join('') || null
-    const tags = JSON.stringify(p.Tags?.multi_select?.map((t) => t.name) ?? [])
+    for (const _page of response.results) {
+      const page = _page as NotionPage
+      if (page.object !== 'page') continue
+      const p = page.properties
 
-    if (existing) {
-      // Prefer the longer body — Notion truncates at 2000 chars on push
-      const mergedBody = body.length >= existing.body.length ? body : existing.body
-      database.update(items)
-        .set({ title, body: mergedBody, type, source, author, tags, synced: 1, updatedAt: now })
-        .where(eq(items.notionId, page.id))
-        .run()
-    } else {
-      database.insert(items).values({
-        id: nanoid(),
-        title,
-        body,
-        type,
-        source,
-        author,
-        tags,
-        notionId: page.id,
-        synced: 1,
-        createdAt: now,
-        updatedAt: now,
-      }).run()
+      const body = p.Body?.rich_text?.map((r) => r.plain_text).join('') ?? ''
+      if (!body) continue
+
+      const existing = database.select().from(items).where(eq(items.notionId, page.id)).get()
+      const now = Date.now()
+      const title = p.Title?.title?.map((t) => t.plain_text).join('') ?? null
+      const type = (p.Type?.select?.name as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit') ?? 'Thought'
+      const source = (p.Source?.select?.name as 'manual' | 'whatsapp' | 'email' | 'voice') ?? 'manual'
+      const author = p.Author?.rich_text?.map((r) => r.plain_text).join('') || null
+      const tags = JSON.stringify(p.Tags?.multi_select?.map((t) => t.name) ?? [])
+
+      if (existing) {
+        const mergedBody = body.length >= existing.body.length ? body : existing.body
+        database.update(items)
+          .set({ title, body: mergedBody, type, source, author, tags, synced: 1, updatedAt: now })
+          .where(eq(items.notionId, page.id))
+          .run()
+      } else {
+        database.insert(items).values({
+          id: nanoid(),
+          title,
+          body,
+          type,
+          source,
+          author,
+          tags,
+          notionId: page.id,
+          synced: 1,
+          createdAt: now,
+          updatedAt: now,
+        }).run()
+      }
     }
-  }
+
+    cursor = response.has_more && response.next_cursor ? response.next_cursor : undefined
+  } while (cursor)
 
   setSyncMeta('lastPull', new Date().toISOString())
 }

@@ -3,6 +3,14 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased] - 2026-05-14
+
+### Fixed
+- Notion sync returning error after Pi5 recovery: wrong NOTION_API_KEY in .env.local — updated to correct integration key.
+- `pullFromNotion()` was not paginating: only fetched first 100 items. Fixed with `do...while` cursor loop so all items are pulled (234 synced from Notion).
+
+---
+
 ## [Unreleased] - 2026-05-10
 
 ### Changed
