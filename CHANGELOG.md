@@ -3,6 +3,15 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.9.6] - 2026-05-15
+
+### Added
+- Auto-login via X-Auth-User header: when auth-gateway has already authenticated the user, Lumina's proxy redirects to /api/auth/auto-login instead of /login — no second username/password prompt
+- New GET /api/auth/auto-login route: reads X-Auth-User set by nginx, looks up user in DB, signs JWT session cookie, redirects to original path
+- Lumina now gated by nginx auth_request /auth/check — single login for all apps
+
+---
+
 ## [0.9.5] - 2026-05-15
 
 ### Fixed
