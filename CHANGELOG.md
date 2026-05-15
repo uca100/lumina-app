@@ -3,6 +3,15 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.9.5] - 2026-05-15
+
+### Fixed
+- DB crash recovery: all 234 items restored from Notion were stuck as `draft` — bulk-updated to `published` via direct sqlite3
+- `pullFromNotion()` never set `status` on items it inserted or updated — items from Notion always get `status='published'` now (Notion only stores published items)
+- `server.compiled.js` recompiled to include previously uncommitted changes (pagination + User field from v0.9.4)
+
+---
+
 ## [Unreleased] - 2026-05-14
 
 ### Fixed
