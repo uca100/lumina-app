@@ -246,9 +246,12 @@ function setSyncMeta(key, value) {
 async function pushToNotion() {
   if (!DB_ID) return;
   const database = db();
-  const pending = database.select().from(items).where((0, import_drizzle_orm.and)((0, import_drizzle_orm.eq)(items.synced, 0), (0, import_drizzle_orm.eq)(items.status, "published"), (0, import_drizzle_orm.isNull)(items.userId))).all();
+  const allUsers = database.select({ id: users.id, username: users.username }).from(users).all();
+  const userMap = new Map(allUsers.map((u) => [u.id, u.username]));
+  const pending = database.select().from(items).where((0, import_drizzle_orm.and)((0, import_drizzle_orm.eq)(items.synced, 0), (0, import_drizzle_orm.eq)(items.status, "published"))).all();
   for (const item of pending) {
     const tags = JSON.parse(item.tags);
+    const username = item.userId ? userMap.get(item.userId) ?? "unknown" : "shared";
     const props = {
       Title: { title: [{ text: { content: item.title ?? item.body.slice(0, 80) } }] },
       Type: { select: { name: item.type } },
@@ -256,7 +259,7 @@ async function pushToNotion() {
       Body: { rich_text: [{ text: { content: item.body.slice(0, 2e3) } }] },
       Tags: { multi_select: tags.map((t) => ({ name: t })) },
       Date: { date: { start: new Date(item.createdAt).toISOString().split("T")[0] } },
-      Status: { select: { name: item.status } },
+      User: { select: { name: username } },
       Synced: { checkbox: true }
     };
     if (item.author) props.Author = { rich_text: [{ text: { content: item.author } }] };
@@ -277,41 +280,45 @@ async function pullFromNotion() {
   if (!DB_ID) return;
   const lastSync = getSyncMeta("lastPull");
   const database = db();
-  const response = await queryDatabase(
-    lastSync ? { timestamp: "last_edited_time", last_edited_time: { after: lastSync } } : void 0
-  );
-  for (const _page of response.results) {
-    const page = _page;
-    if (page.object !== "page") continue;
-    const p = page.properties;
-    const body = p.Body?.rich_text?.map((r) => r.plain_text).join("") ?? "";
-    if (!body) continue;
-    const existing = database.select().from(items).where((0, import_drizzle_orm.eq)(items.notionId, page.id)).get();
-    const now = Date.now();
-    const title = p.Title?.title?.map((t) => t.plain_text).join("") ?? null;
-    const type = p.Type?.select?.name ?? "Thought";
-    const source = p.Source?.select?.name ?? "manual";
-    const author = p.Author?.rich_text?.map((r) => r.plain_text).join("") || null;
-    const tags = JSON.stringify(p.Tags?.multi_select?.map((t) => t.name) ?? []);
-    if (existing) {
-      const mergedBody = body.length >= existing.body.length ? body : existing.body;
-      database.update(items).set({ title, body: mergedBody, type, source, author, tags, synced: 1, updatedAt: now }).where((0, import_drizzle_orm.eq)(items.notionId, page.id)).run();
-    } else {
-      database.insert(items).values({
-        id: (0, import_nanoid.nanoid)(),
-        title,
-        body,
-        type,
-        source,
-        author,
-        tags,
-        notionId: page.id,
-        synced: 1,
-        createdAt: now,
-        updatedAt: now
-      }).run();
+  const filter = lastSync ? { timestamp: "last_edited_time", last_edited_time: { after: lastSync } } : void 0;
+  let cursor;
+  do {
+    const response = await queryDatabase(filter, cursor);
+    for (const _page of response.results) {
+      const page = _page;
+      if (page.object !== "page") continue;
+      const p = page.properties;
+      const body = p.Body?.rich_text?.map((r) => r.plain_text).join("") ?? "";
+      if (!body) continue;
+      const existing = database.select().from(items).where((0, import_drizzle_orm.eq)(items.notionId, page.id)).get();
+      const now = Date.now();
+      const title = p.Title?.title?.map((t) => t.plain_text).join("") ?? null;
+      const type = p.Type?.select?.name ?? "Thought";
+      const source = p.Source?.select?.name ?? "manual";
+      const author = p.Author?.rich_text?.map((r) => r.plain_text).join("") || null;
+      const tags = JSON.stringify(p.Tags?.multi_select?.map((t) => t.name) ?? []);
+      if (existing) {
+        const mergedBody = body.length >= existing.body.length ? body : existing.body;
+        database.update(items).set({ title, body: mergedBody, type, source, author, tags, status: "published", synced: 1, updatedAt: now }).where((0, import_drizzle_orm.eq)(items.notionId, page.id)).run();
+      } else {
+        database.insert(items).values({
+          id: (0, import_nanoid.nanoid)(),
+          title,
+          body,
+          type,
+          source,
+          author,
+          tags,
+          status: "published",
+          notionId: page.id,
+          synced: 1,
+          createdAt: now,
+          updatedAt: now
+        }).run();
+      }
     }
-  }
+    cursor = response.has_more && response.next_cursor ? response.next_cursor : void 0;
+  } while (cursor);
   setSyncMeta("lastPull", (/* @__PURE__ */ new Date()).toISOString());
 }
 async function syncDeletions() {

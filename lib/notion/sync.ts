@@ -129,7 +129,7 @@ export async function pullFromNotion() {
       if (existing) {
         const mergedBody = body.length >= existing.body.length ? body : existing.body
         database.update(items)
-          .set({ title, body: mergedBody, type, source, author, tags, synced: 1, updatedAt: now })
+          .set({ title, body: mergedBody, type, source, author, tags, status: 'published', synced: 1, updatedAt: now })
           .where(eq(items.notionId, page.id))
           .run()
       } else {
@@ -141,6 +141,7 @@ export async function pullFromNotion() {
           source,
           author,
           tags,
+          status: 'published',
           notionId: page.id,
           synced: 1,
           createdAt: now,
