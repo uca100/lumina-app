@@ -38,12 +38,13 @@ export async function proxy(req: NextRequest) {
   const valid = token ? await verifySession(token) : false
 
   if (!valid) {
-    // Clone nextUrl to preserve correct external host/protocol.
-    // Set pathname WITHOUT basePath — Next.js prepends basePath automatically.
-    const loginUrl = req.nextUrl.clone()
-    loginUrl.pathname = '/login'
-    loginUrl.searchParams.set('from', strippedPath)
-    return NextResponse.redirect(loginUrl)
+    // Auth-gateway already authenticated the user — auto-create a Lumina session
+    // from the X-Auth-User header rather than showing a second login prompt.
+    const autoLogin = req.nextUrl.clone()
+    autoLogin.pathname = '/api/auth/auto-login'
+    autoLogin.search = ''
+    autoLogin.searchParams.set('from', strippedPath)
+    return NextResponse.redirect(autoLogin)
   }
 
   return NextResponse.next()
