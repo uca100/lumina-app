@@ -40,7 +40,7 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, use
     notifBody = notifBody.slice(0, NTFY_MAX_BODY - 1) + '…'
   }
   const text = [notifBody, ...(pick.author ? [`— ${pick.author}`] : [])].join('\n')
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '')
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://myweb.tail075174.ts.net').replace(/\/$/, '')
   const isAffirmation = pick.type === 'Affirmation'
   const clickUrl = isAffirmation ? `${baseUrl}/lumina/affirmations` : `${baseUrl}/lumina/view/${pick.id}`
   const notifTitle = isAffirmation ? "Today's Affirmations" : (pick.title ?? undefined)

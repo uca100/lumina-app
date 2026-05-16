@@ -31,12 +31,20 @@ export async function classifyAndSave(
   let summary: string | null
 
   // Always run AI for standardized tags/summary; preset values override AI suggestions
-  const classified = await classifyItem(body)
-  type = presetType ?? classified.type
-  author = meta?.author ?? classified.author
-  tags = [...new Set([...(meta?.tags ?? []), ...classified.tags])]
-  title = meta?.title ?? classified.title
-  summary = classified.summary
+  try {
+    const classified = await classifyItem(body)
+    type = presetType ?? classified.type
+    author = meta?.author ?? classified.author
+    tags = [...new Set([...(meta?.tags ?? []), ...classified.tags])]
+    title = meta?.title ?? classified.title
+    summary = classified.summary
+  } catch {
+    type = presetType ?? 'Thought'
+    author = meta?.author ?? null
+    tags = meta?.tags ?? []
+    title = meta?.title ?? null
+    summary = null
+  }
 
   const status = source === 'manual' ? 'draft' : 'review'
 

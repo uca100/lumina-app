@@ -393,7 +393,7 @@ Respond ONLY with valid JSON in this exact shape:
 No markdown, no explanation, only the JSON object.`;
 async function classifyItem(body) {
   const response = await client.messages.create({
-    model: "claude-haiku-4-5",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 256,
     system: [
       {
@@ -425,12 +425,20 @@ async function classifyAndSave(body, source, meta) {
   let tags;
   let title;
   let summary;
-  const classified = await classifyItem(body);
-  type = presetType ?? classified.type;
-  author = meta?.author ?? classified.author;
-  tags = [.../* @__PURE__ */ new Set([...meta?.tags ?? [], ...classified.tags])];
-  title = meta?.title ?? classified.title;
-  summary = classified.summary;
+  try {
+    const classified = await classifyItem(body);
+    type = presetType ?? classified.type;
+    author = meta?.author ?? classified.author;
+    tags = [.../* @__PURE__ */ new Set([...meta?.tags ?? [], ...classified.tags])];
+    title = meta?.title ?? classified.title;
+    summary = classified.summary;
+  } catch {
+    type = presetType ?? "Thought";
+    author = meta?.author ?? null;
+    tags = meta?.tags ?? [];
+    title = meta?.title ?? null;
+    summary = null;
+  }
   const status = source === "manual" ? "draft" : "review";
   db().insert(items).values({
     id,
@@ -589,7 +597,7 @@ async function fireReminder(schedule, user) {
     notifBody = notifBody.slice(0, NTFY_MAX_BODY - 1) + "\u2026";
   }
   const text2 = [notifBody, ...pick.author ? [`\u2014 ${pick.author}`] : []].join("\n");
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://myweb.tail075174.ts.net").replace(/\/$/, "");
   const isAffirmation = pick.type === "Affirmation";
   const clickUrl = isAffirmation ? `${baseUrl}/lumina/affirmations` : `${baseUrl}/lumina/view/${pick.id}`;
   const notifTitle = isAffirmation ? "Today's Affirmations" : pick.title ?? void 0;

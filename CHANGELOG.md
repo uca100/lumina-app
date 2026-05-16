@@ -3,6 +3,22 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.9.7] - 2026-05-16
+
+### Fixed
+- Drafts app "Send to Lumina" and "Flush to Lumina" actions now work end-to-end
+  - nginx: added `/lumina/api/ingest/` location that bypasses auth-gateway (ingest endpoints carry their own Bearer token auth)
+  - AI model name corrected: `claude-haiku-4-5` → `claude-haiku-4-5-20251001`
+  - `classifyAndSave` now catches AI classification failures and falls back to saving item as type Thought rather than returning 500
+- ntfy notification links now open correctly: `jobs.ts` was building relative URLs when `NEXT_PUBLIC_BASE_URL` is unset — now falls back to `https://myweb.tail075174.ts.net`
+- View page (`/view/[id]`) no longer shows "Item not found" when opened from ntfy: removed `/view/` from proxy `PUBLIC_PATHS` so unauthenticated requests go through auto-login and get a valid session before the page loads
+
+### Changed
+- Drafts integration scripts updated: full TYPE_MAP (all 7 types), THEMATIC = ["lessons", "inspiring"]
+- Integrations page Drafts scripts updated to match
+
+---
+
 ## [0.9.6] - 2026-05-15
 
 ### Added

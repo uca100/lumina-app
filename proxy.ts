@@ -19,7 +19,6 @@ async function verifySession(token: string): Promise<boolean> {
 const PUBLIC_PATHS = [
   '/login',
   '/api/',
-  '/view/',
   '/_next/',
 ]
 
