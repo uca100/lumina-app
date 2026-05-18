@@ -7,8 +7,9 @@ import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
 import { isRTL } from '@/lib/utils/rtl'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { ITEM_TYPES } from '@/lib/types'
 
-const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
+const TYPES = ITEM_TYPES
 const STATUSES = ['draft', 'review', 'published'] as const
 const MARKS = [
   { value: 1, label: 'Low',    description: 'Less frequent in shuffle' },
@@ -29,7 +30,6 @@ const TYPE_ACCENT: Record<string, string> = {
   Thought:     'from-amber-50 to-white border-amber-100',
   Lesson:      'from-rose-50 to-white border-rose-100',
   Habit:       'from-teal-50 to-white border-teal-100',
-  Pattern:     'from-orange-50 to-white border-orange-100',
 }
 
 const TYPE_BADGE: Record<string, string> = {
@@ -39,7 +39,6 @@ const TYPE_BADGE: Record<string, string> = {
   Thought:     'text-amber-700 bg-amber-50 border-amber-200',
   Lesson:      'text-rose-700 bg-rose-50 border-rose-200',
   Habit:       'text-teal-700 bg-teal-50 border-teal-200',
-  Pattern:     'text-orange-700 bg-orange-50 border-orange-200',
 }
 
 export default function ItemPage() {

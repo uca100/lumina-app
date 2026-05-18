@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ItemCard, Item } from '@/components/ItemCard'
 import { UserBadge } from '@/components/UserBadge'
+import { ITEM_TYPES } from '@/lib/types'
 
-const TYPES = ['', 'Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
+const TYPES = ['', ...ITEM_TYPES] as const
 
 const TYPE_ICONS: Record<string, string> = {
   '': '✦',
@@ -16,7 +17,6 @@ const TYPE_ICONS: Record<string, string> = {
   Thought: '◎',
   Lesson: '◆',
   Habit: '⬡',
-  Pattern: '◇',
 }
 
 export default function FeedPage() {
@@ -30,8 +30,6 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [shuffling, setShuffling] = useState(false)
-  const [backfilling, setBackfilling] = useState(false)
-  const [backfillResult, setBackfillResult] = useState<string | null>(null)
   const [debouncedQ, setDebouncedQ] = useState('')
   const [version, setVersion] = useState('')
 
@@ -77,16 +75,6 @@ export default function FeedPage() {
     fetchItems()
   }
 
-  async function backfillTags() {
-    setBackfilling(true)
-    setBackfillResult(null)
-    const res = await fetch('/lumina/api/items/backfill', { method: 'POST' })
-    const data = await res.json()
-    setBackfillResult(data.total === 0 ? 'All items already tagged' : `Tagged ${data.fixed} item${data.fixed !== 1 ? 's' : ''}${data.failed ? ` (${data.failed} failed)` : ''}`)
-    setBackfilling(false)
-    fetchItems()
-  }
-
   return (
     <div className="min-h-screen text-white" style={{ background: 'radial-gradient(ellipse at top, #1c1408 0%, #0d0d0d 60%)' }}>
 
@@ -119,14 +107,6 @@ export default function FeedPage() {
               className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all disabled:opacity-40"
             >
               {syncing ? '⟳ Syncing…' : '⟳ Notion'}
-            </button>
-            <button
-              onClick={backfillTags}
-              disabled={backfilling}
-              className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all disabled:opacity-40"
-              title="Re-classify items with no tags"
-            >
-              {backfilling ? '✦ Tagging…' : '✦ Fix tags'}
             </button>
             <Link
               href="/queue"
@@ -168,13 +148,6 @@ export default function FeedPage() {
       </header>
 
       <main className="relative max-w-3xl mx-auto px-6 py-8">
-
-        {backfillResult && (
-          <div className="mb-4 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2 flex justify-between items-center">
-            <span>{backfillResult}</span>
-            <button onClick={() => setBackfillResult(null)} className="text-zinc-600 hover:text-zinc-400 ml-4">✕</button>
-          </div>
-        )}
 
         {/* Search + filters */}
         <div className="mb-8 flex flex-col gap-3">

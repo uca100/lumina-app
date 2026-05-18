@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
 import { UserBadge } from '@/components/UserBadge'
-
-const ITEM_TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'] as const
+import { ITEM_TYPES } from '@/lib/types'
 
 interface Schedule {
   id: string

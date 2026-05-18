@@ -3,6 +3,20 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.9.9] - 2026-05-18
+
+### Added
+- Admin index page at `/admin` with backfill tool (re-classify untagged items)
+
+### Changed
+- `ITEM_TYPES` centralised into `lib/types.ts` — single source of truth for all pages
+- Removed `Pattern` type (zero items, never used) from all type lists and accent/badge maps
+
+### Removed
+- Backfill button removed from main feed header — moved to `/admin`
+
+---
+
 ## [0.9.8] - 2026-05-18
 
 ### Added
