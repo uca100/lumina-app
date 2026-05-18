@@ -5,15 +5,16 @@ import * as schema from './schema'
 
 const DB_PATH = path.join(process.cwd(), 'lumina.db')
 
+let _sqlite: Database.Database | null = null
 let _db: ReturnType<typeof drizzle> | null = null
 
 function getDb() {
   if (!_db) {
-    const sqlite = new Database(DB_PATH)
-    sqlite.pragma('journal_mode = WAL')
-    sqlite.pragma('foreign_keys = ON')
-    _db = drizzle(sqlite, { schema })
-    ensureSchema(sqlite)
+    _sqlite = new Database(DB_PATH)
+    _sqlite.pragma('journal_mode = WAL')
+    _sqlite.pragma('foreign_keys = ON')
+    _db = drizzle(_sqlite, { schema })
+    ensureSchema(_sqlite)
   }
   return _db
 }
@@ -36,8 +37,7 @@ function ensureSchema(sqlite: Database.Database) {
     try { sqlite.exec(sql) } catch { /* column already exists */ }
   }
 
-  sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS users (
+  sqlite.exec(`CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
       email TEXT NOT NULL UNIQUE,
@@ -66,6 +66,26 @@ function ensureSchema(sqlite: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_items_created ON items(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_items_user ON items(user_id);
 
+    CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
+      id UNINDEXED,
+      title,
+      body,
+      tags
+    );
+
+    CREATE TRIGGER IF NOT EXISTS items_fts_insert AFTER INSERT ON items BEGIN
+      INSERT INTO items_fts(id, title, body, tags) VALUES (new.id, COALESCE(new.title, ''), new.body, new.tags);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS items_fts_update AFTER UPDATE ON items BEGIN
+      DELETE FROM items_fts WHERE id = old.id;
+      INSERT INTO items_fts(id, title, body, tags) VALUES (new.id, COALESCE(new.title, ''), new.body, new.tags);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS items_fts_delete AFTER DELETE ON items BEGIN
+      DELETE FROM items_fts WHERE id = old.id;
+    END;
+
     CREATE TABLE IF NOT EXISTS sync_meta (
       id TEXT PRIMARY KEY,
       key TEXT NOT NULL UNIQUE,
@@ -85,6 +105,12 @@ function ensureSchema(sqlite: Database.Database) {
       created_at INTEGER NOT NULL
     );
   `)
+
+  // Populate FTS index for existing items on first run
+  const { n } = sqlite.prepare('SELECT COUNT(*) as n FROM items_fts').get() as { n: number }
+  if (n === 0) {
+    sqlite.exec(`INSERT INTO items_fts(id, title, body, tags) SELECT id, COALESCE(title, ''), body, tags FROM items`)
+  }
 }
 
 export function initDb() {
@@ -94,4 +120,9 @@ export function initDb() {
 
 export function db() {
   return getDb()
+}
+
+export function rawDb() {
+  getDb()
+  return _sqlite!
 }

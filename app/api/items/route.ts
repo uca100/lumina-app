@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db/client'
+import { db, rawDb } from '@/lib/db/client'
 import { items } from '@/lib/db/schema'
-import { desc, like, eq, and, or, isNull } from 'drizzle-orm'
+import { desc, eq, and, or, isNull, inArray, like } from 'drizzle-orm'
 import { classifyAndSave } from '@/lib/ingest/save'
 import { getUserIdFromRequest } from '@/lib/auth/session'
-
-type ItemType = 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
+import { ItemType } from '@/lib/types'
 
 export async function GET(req: NextRequest) {
   const userId = await getUserIdFromRequest(req)
@@ -19,10 +18,23 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status') ?? ''
 
   const database = db()
-  // User sees own items + shared (userId IS NULL)
   const visibility = or(eq(items.userId, userId), isNull(items.userId))
   const conditions = [visibility!]
-  if (q) conditions.push(like(items.body, `%${q}%`))
+
+  if (q) {
+    // FTS5 full-text search across title, body, tags — fall back to LIKE on parse error
+    try {
+      const ftsQuery = q.trim().split(/\s+/).map(w => `"${w.replace(/"/g, '')}"`).join(' ')
+      const matched = rawDb()
+        .prepare('SELECT id FROM items_fts WHERE items_fts MATCH ? ORDER BY rank')
+        .all(ftsQuery) as { id: string }[]
+      if (matched.length === 0) return NextResponse.json([])
+      conditions.push(inArray(items.id, matched.map(r => r.id)))
+    } catch {
+      conditions.push(like(items.body, `%${q}%`))
+    }
+  }
+
   if (type) conditions.push(eq(items.type, type as ItemType))
   if (tag) conditions.push(like(items.tags, `%"${tag}"%`))
   if (pinned === '1') conditions.push(eq(items.pinned, 1))

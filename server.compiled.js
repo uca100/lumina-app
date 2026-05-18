@@ -102,14 +102,15 @@ var reminderSchedules = (0, import_sqlite_core.sqliteTable)("reminder_schedules"
 
 // lib/db/client.ts
 var DB_PATH = import_path.default.join(process.cwd(), "lumina.db");
+var _sqlite = null;
 var _db = null;
 function getDb() {
   if (!_db) {
-    const sqlite = new import_better_sqlite3.default(DB_PATH);
-    sqlite.pragma("journal_mode = WAL");
-    sqlite.pragma("foreign_keys = ON");
-    _db = (0, import_better_sqlite32.drizzle)(sqlite, { schema: schema_exports });
-    ensureSchema(sqlite);
+    _sqlite = new import_better_sqlite3.default(DB_PATH);
+    _sqlite.pragma("journal_mode = WAL");
+    _sqlite.pragma("foreign_keys = ON");
+    _db = (0, import_better_sqlite32.drizzle)(_sqlite, { schema: schema_exports });
+    ensureSchema(_sqlite);
   }
   return _db;
 }
@@ -132,8 +133,7 @@ function ensureSchema(sqlite) {
     } catch {
     }
   }
-  sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS users (
+  sqlite.exec(`CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
       email TEXT NOT NULL UNIQUE,
@@ -162,6 +162,26 @@ function ensureSchema(sqlite) {
     CREATE INDEX IF NOT EXISTS idx_items_created ON items(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_items_user ON items(user_id);
 
+    CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
+      id UNINDEXED,
+      title,
+      body,
+      tags
+    );
+
+    CREATE TRIGGER IF NOT EXISTS items_fts_insert AFTER INSERT ON items BEGIN
+      INSERT INTO items_fts(id, title, body, tags) VALUES (new.id, COALESCE(new.title, ''), new.body, new.tags);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS items_fts_update AFTER UPDATE ON items BEGIN
+      DELETE FROM items_fts WHERE id = old.id;
+      INSERT INTO items_fts(id, title, body, tags) VALUES (new.id, COALESCE(new.title, ''), new.body, new.tags);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS items_fts_delete AFTER DELETE ON items BEGIN
+      DELETE FROM items_fts WHERE id = old.id;
+    END;
+
     CREATE TABLE IF NOT EXISTS sync_meta (
       id TEXT PRIMARY KEY,
       key TEXT NOT NULL UNIQUE,
@@ -181,6 +201,10 @@ function ensureSchema(sqlite) {
       created_at INTEGER NOT NULL
     );
   `);
+  const { n } = sqlite.prepare("SELECT COUNT(*) as n FROM items_fts").get();
+  if (n === 0) {
+    sqlite.exec(`INSERT INTO items_fts(id, title, body, tags) SELECT id, COALESCE(title, ''), body, tags FROM items`);
+  }
 }
 function initDb() {
   getDb();

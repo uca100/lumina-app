@@ -3,6 +3,20 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.0.0] - 2026-05-18
+
+### Added
+- Full-text search (SQLite FTS5) across title, body, and tags — replaces LIKE substring search
+- `items_fts` virtual table with triggers to keep index in sync on insert/update/delete
+- FTS index auto-populated from existing items on first start
+- `rawDb()` export from `lib/db/client.ts` for raw SQLite access
+- Uptime Kuma monitor for Lumina (60s interval, checks `/lumina/api/version`)
+
+### Changed
+- Search query split into quoted tokens for AND matching; falls back to LIKE on parse error
+
+---
+
 ## [0.9.9] - 2026-05-18
 
 ### Added
