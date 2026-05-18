@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { classifyAndSave } from '@/lib/ingest/save'
 import crypto from 'crypto'
+import { checkRateLimit } from '@/lib/ingest/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const rlKey = request.headers.get('x-hub-signature-256') ?? '__whatsapp__'
+  if (checkRateLimit(rlKey)) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
+
   const rawBody = await request.text()
 
   // Validate HMAC signature

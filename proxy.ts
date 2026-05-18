@@ -22,6 +22,7 @@ const PUBLIC_PATHS = [
   '/_next/',
   '/manifest.webmanifest',
   '/icons/',
+  '/view/',
 ]
 
 export async function proxy(req: NextRequest) {

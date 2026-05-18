@@ -42,7 +42,7 @@ export default function ViewPage() {
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    fetch(`/lumina/api/items/${id}`)
+    fetch(`/lumina/api/items/${id}/public`)
       .then((r) => { if (!r.ok) throw new Error(); return r.json() })
       .then(setItem)
       .catch(() => setNotFound(true))

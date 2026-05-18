@@ -4,10 +4,16 @@ import { sendMessage } from '@/lib/telegram/bot'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { checkRateLimit } from '@/lib/ingest/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
+  const token = request.headers.get('x-telegram-bot-api-secret-token') ?? '__telegram__'
+  if (checkRateLimit(token)) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
+
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET
   if (secret && request.headers.get('x-telegram-bot-api-secret-token') !== secret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

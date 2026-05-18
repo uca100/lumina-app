@@ -3,6 +3,21 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.1.0] - 2026-05-18
+
+### Added
+- Item sharing: Copy and Share buttons appear on hover for every item card
+  - **Copy** copies formatted text (title, body, author, "✦ Lumina") to clipboard
+  - **Share** copies a public link `https://myweb.../lumina/view/<id>` to clipboard
+- Public item view at `/view/<id>` — no authentication required, safe because item IDs are unguessable 21-char nanoids
+- Public API endpoint `GET /api/items/<id>/public` — no-auth, returns item JSON for the shared view
+- Rate limiting on all 4 ingest endpoints (20 req/60s per bearer token, returns 429)
+- nginx: `/lumina/view/` bypass block (no auth_request) added before main auth-gated location
+- Lumina proxy: `/view/` added to `PUBLIC_PATHS`
+- SQLite WAL integrity check: weekly Sunday cron on Pi5 at 04:30, alerts Telegram on failure
+
+---
+
 ## [1.0.3] - 2026-05-18
 
 ### Added
