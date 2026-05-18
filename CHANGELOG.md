@@ -3,6 +3,26 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.1.1] - 2026-05-18
+
+### Added
+- `components/ShareButtons.tsx` — generic Copy/Share component (light + dark variants)
+  used in ItemCard, item detail page, and public view page
+- Public view page (`/view/<id>`) now shows creation date and Copy/Share buttons
+- Item detail page (`/item/<id>`) now has Copy/Share buttons below tags
+- Admin nav link (⚙) added to main header
+- Users page back link now points to `/admin` instead of home
+
+### Fixed
+- AI classification failures now log to server console (`[classifyAndSave] AI classification failed`)
+  instead of being swallowed silently
+- Drafts action scripts no longer send `title` in the payload — AI always generates
+  a proper short title instead of duplicating the body's first line
+- Backfill (`/admin` → Run backfill) now also fixes items where the title is a
+  verbatim copy of the body opening, not just items with empty tags
+
+---
+
 ## [1.1.0] - 2026-05-18
 
 ### Added
