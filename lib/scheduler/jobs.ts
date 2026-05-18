@@ -3,7 +3,7 @@ import { runSync, syncDeletions } from '../notion/sync'
 import { checkEmail } from '../email/ingest'
 import { db } from '../db/client'
 import { reminderSchedules, items, users } from '../db/schema'
-import { eq, and, inArray, or, isNull } from 'drizzle-orm'
+import { eq, and, inArray, or, isNull, gte } from 'drizzle-orm'
 import { sendMessage } from '../telegram/bot'
 import { sendNtfy } from '../ntfy/notify'
 import { weightedPick } from '../utils/weightedPick'
@@ -24,7 +24,6 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, use
     if (!pick) return
   } else {
     const types: string[] = JSON.parse(schedule.typesFilter)
-    // Include user's own items + shared items
     const visibility = user
       ? or(eq(items.userId, user.id), isNull(items.userId))
       : isNull(items.userId)
@@ -171,6 +170,54 @@ function initReminderJobs() {
   scheduleDailyRandoms()
 }
 
+async function sendWeeklyDigest() {
+  const since = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const weekItems = db().select().from(items)
+    .where(and(eq(items.status, 'published'), gte(items.createdAt, since)))
+    .all()
+
+  if (!weekItems.length) {
+    console.log('[Lumina] Weekly digest: no items captured this week, skipping')
+    return
+  }
+
+  const typeCounts: Record<string, number> = {}
+  for (const item of weekItems) {
+    typeCounts[item.type] = (typeCounts[item.type] ?? 0) + 1
+  }
+  const typeBreakdown = Object.entries(typeCounts)
+    .map(([type, count]) => `${type} ×${count}`)
+    .join(' · ')
+
+  const spotlight = weekItems[Math.floor(Math.random() * weekItems.length)]
+  const spotlightText = spotlight.title ?? spotlight.body.slice(0, 80).replace(/\n/g, ' ')
+
+  const message = `${typeBreakdown}\n\n${spotlightText}`
+  const title = `✦ Weekly digest — ${weekItems.length} item${weekItems.length === 1 ? '' : 's'} captured`
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://myweb.tail075174.ts.net').replace(/\/$/, '')
+  const clickUrl = `${baseUrl}/lumina`
+
+  const allUsers = db().select().from(users).all()
+  let sent = 0
+  for (const user of allUsers) {
+    if (!user.ntfyTopic) continue
+    try {
+      await sendNtfy(message, title, undefined, clickUrl, user.ntfyTopic)
+      sent++
+    } catch (err) {
+      console.error('[Lumina] Weekly digest ntfy error for user', user.id, err)
+    }
+  }
+
+  if (sent === 0 && process.env.NTFY_TOPIC) {
+    await sendNtfy(message, title, undefined, clickUrl).catch(err =>
+      console.error('[Lumina] Weekly digest ntfy error (global):', err)
+    )
+  }
+
+  console.log(`[Lumina] Weekly digest sent to ${sent} user(s) — ${weekItems.length} items this week`)
+}
+
 export function initScheduler() {
   cron.schedule('*/15 * * * *', async () => {
     console.log('[Lumina] Running Notion sync...')
@@ -184,6 +231,11 @@ export function initScheduler() {
     console.log('[Lumina] Running deletion sync...')
     try { await syncDeletions() } catch (err) { console.error('[Lumina] Deletion sync error:', err) }
   })
+  // Weekly digest: every Sunday at 20:00
+  cron.schedule('0 20 * * 0', async () => {
+    console.log('[Lumina] Running weekly digest...')
+    try { await sendWeeklyDigest() } catch (err) { console.error('[Lumina] Weekly digest error:', err) }
+  })
   initReminderJobs()
-  console.log('> Lumina scheduler started (Notion sync + email check every 15 min, reminders every minute)')
+  console.log('> Lumina scheduler started (Notion sync + email check every 15 min, reminders every minute, weekly digest Sundays 20:00)')
 }

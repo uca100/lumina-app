@@ -372,7 +372,7 @@ var import_sdk = __toESM(require("@anthropic-ai/sdk"));
 var client = new import_sdk.default({ apiKey: process.env.CLAUDE_API_KEY });
 var SYSTEM_PROMPT = `You are a content classifier for a personal inspiration app called Lumina.
 When given a piece of text, you will:
-1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, Habit, or Pattern
+1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, or Habit
 2. Extract the author if present (for quotes)
 3. Choose 3\u20135 tags from the vocabulary below
 4. Generate a short title (max 7 words, no articles like "A" or "The" at start)
@@ -387,7 +387,6 @@ Definitions:
 - Thought: A personal reflection, idea, or insight
 - Lesson: A key takeaway, learning, or principle derived from experience
 - Habit: A routine, practice, or behavioral pattern worth building
-- Pattern: A recurring theme, structure, or principle observed across experience or knowledge
 
 ## Tag vocabulary (use ONLY these, all lowercase, pick the most specific fit):
 mindset, growth, resilience, identity, self-belief, confidence, courage, fear, ego, clarity
@@ -407,7 +406,7 @@ Rules for tags:
 
 Respond ONLY with valid JSON in this exact shape:
 {
-  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit" | "Pattern",
+  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit",
   "author": string | null,
   "tags": string[],
   "title": string,
@@ -436,7 +435,7 @@ async function classifyItem(body) {
 // lib/ingest/save.ts
 var import_nanoid2 = require("nanoid");
 var import_drizzle_orm2 = require("drizzle-orm");
-var VALID_TYPES = /* @__PURE__ */ new Set(["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit", "Pattern"]);
+var VALID_TYPES = /* @__PURE__ */ new Set(["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit"]);
 async function classifyAndSave(body, source, meta) {
   const normalizedBody = body.trim();
   const existing = db().select().from(items).where((0, import_drizzle_orm2.eq)(items.body, normalizedBody)).get();
@@ -449,6 +448,7 @@ async function classifyAndSave(body, source, meta) {
   let tags;
   let title;
   let summary;
+  let aiFailed = false;
   try {
     const classified = await classifyItem(body);
     type = presetType ?? classified.type;
@@ -457,13 +457,14 @@ async function classifyAndSave(body, source, meta) {
     title = meta?.title ?? classified.title;
     summary = classified.summary;
   } catch {
+    aiFailed = true;
     type = presetType ?? "Thought";
     author = meta?.author ?? null;
     tags = meta?.tags ?? [];
     title = meta?.title ?? null;
     summary = null;
   }
-  const status = source === "manual" ? "draft" : "review";
+  const status = aiFailed ? "review" : source === "manual" ? "draft" : "review";
   db().insert(items).values({
     id,
     title,
@@ -725,6 +726,44 @@ function initReminderJobs() {
   import_node_cron.default.schedule("0 0 * * *", scheduleDailyRandoms);
   scheduleDailyRandoms();
 }
+async function sendWeeklyDigest() {
+  const since = Date.now() - 7 * 24 * 60 * 60 * 1e3;
+  const weekItems = db().select().from(items).where((0, import_drizzle_orm3.and)((0, import_drizzle_orm3.eq)(items.status, "published"), (0, import_drizzle_orm3.gte)(items.createdAt, since))).all();
+  if (!weekItems.length) {
+    console.log("[Lumina] Weekly digest: no items captured this week, skipping");
+    return;
+  }
+  const typeCounts = {};
+  for (const item of weekItems) {
+    typeCounts[item.type] = (typeCounts[item.type] ?? 0) + 1;
+  }
+  const typeBreakdown = Object.entries(typeCounts).map(([type, count]) => `${type} \xD7${count}`).join(" \xB7 ");
+  const spotlight = weekItems[Math.floor(Math.random() * weekItems.length)];
+  const spotlightText = spotlight.title ?? spotlight.body.slice(0, 80).replace(/\n/g, " ");
+  const message = `${typeBreakdown}
+
+${spotlightText}`;
+  const title = `\u2726 Weekly digest \u2014 ${weekItems.length} item${weekItems.length === 1 ? "" : "s"} captured`;
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://myweb.tail075174.ts.net").replace(/\/$/, "");
+  const clickUrl = `${baseUrl}/lumina`;
+  const allUsers = db().select().from(users).all();
+  let sent = 0;
+  for (const user of allUsers) {
+    if (!user.ntfyTopic) continue;
+    try {
+      await sendNtfy(message, title, void 0, clickUrl, user.ntfyTopic);
+      sent++;
+    } catch (err) {
+      console.error("[Lumina] Weekly digest ntfy error for user", user.id, err);
+    }
+  }
+  if (sent === 0 && process.env.NTFY_TOPIC) {
+    await sendNtfy(message, title, void 0, clickUrl).catch(
+      (err) => console.error("[Lumina] Weekly digest ntfy error (global):", err)
+    );
+  }
+  console.log(`[Lumina] Weekly digest sent to ${sent} user(s) \u2014 ${weekItems.length} items this week`);
+}
 function initScheduler() {
   import_node_cron.default.schedule("*/15 * * * *", async () => {
     console.log("[Lumina] Running Notion sync...");
@@ -752,8 +791,16 @@ function initScheduler() {
       console.error("[Lumina] Deletion sync error:", err);
     }
   });
+  import_node_cron.default.schedule("0 20 * * 0", async () => {
+    console.log("[Lumina] Running weekly digest...");
+    try {
+      await sendWeeklyDigest();
+    } catch (err) {
+      console.error("[Lumina] Weekly digest error:", err);
+    }
+  });
   initReminderJobs();
-  console.log("> Lumina scheduler started (Notion sync + email check every 15 min, reminders every minute)");
+  console.log("> Lumina scheduler started (Notion sync + email check every 15 min, reminders every minute, weekly digest Sundays 20:00)");
 }
 
 // server.ts

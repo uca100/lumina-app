@@ -3,6 +3,19 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.0.3] - 2026-05-18
+
+### Added
+- Export endpoint `GET /api/export` — downloads all published items as `lumina-export-YYYY-MM-DD.json`; auth-gated
+- Export button on `/admin` page
+- Weekly digest: every Sunday at 20:00 sends ntfy to all users with an ntfyTopic — item count, type breakdown, and a spotlight item
+
+### Fixed
+- AI classification failure now routes item to `review` queue instead of silently saving as type `Thought`
+- `Pattern` type fully removed from AI classifier prompt and type unions in `lib/ai/claude.ts`
+
+---
+
 ## [1.0.0] - 2026-05-18
 
 ### Added

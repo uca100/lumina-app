@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 
 type Source = 'manual' | 'whatsapp' | 'email' | 'voice' | 'telegram' | 'shortcut'
 
-const VALID_TYPES = new Set(['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Pattern'])
+const VALID_TYPES = new Set(['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'])
 
 export async function classifyAndSave(
   body: string,
@@ -21,16 +21,16 @@ export async function classifyAndSave(
   const id = nanoid()
 
   const presetType = meta?.type && VALID_TYPES.has(meta.type)
-    ? meta.type as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
+    ? meta.type as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
     : null
 
-  let type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
+  let type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
   let author: string | null
   let tags: string[]
   let title: string | null
   let summary: string | null
+  let aiFailed = false
 
-  // Always run AI for standardized tags/summary; preset values override AI suggestions
   try {
     const classified = await classifyItem(body)
     type = presetType ?? classified.type
@@ -39,6 +39,7 @@ export async function classifyAndSave(
     title = meta?.title ?? classified.title
     summary = classified.summary
   } catch {
+    aiFailed = true
     type = presetType ?? 'Thought'
     author = meta?.author ?? null
     tags = meta?.tags ?? []
@@ -46,7 +47,8 @@ export async function classifyAndSave(
     summary = null
   }
 
-  const status = source === 'manual' ? 'draft' : 'review'
+  // AI failure always routes to review queue regardless of source
+  const status = aiFailed ? 'review' : (source === 'manual' ? 'draft' : 'review')
 
   db().insert(items).values({
     id, title, body: normalizedBody, type, source, author, summary,
