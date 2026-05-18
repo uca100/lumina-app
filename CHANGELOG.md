@@ -3,6 +3,17 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.9.8] - 2026-05-18
+
+### Added
+- PWA support: `app/manifest.ts` with name, icons, standalone display, dark theme color
+- Apple-specific meta tags in `layout.tsx` (`apple-mobile-web-app-capable`, status bar, touch icon)
+- App icons: 192×192, 512×512 PNG and 180×180 apple-touch-icon generated from SVG
+- nginx: `/lumina/manifest.webmanifest` and `/lumina/icons/` bypass auth-gateway (required for browser install prompt)
+- Lumina proxy: `/manifest.webmanifest` and `/icons/` added to `PUBLIC_PATHS`
+
+---
+
 ## [0.9.7] - 2026-05-16
 
 ### Fixed
