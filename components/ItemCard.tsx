@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { TagBadge } from './TagBadge'
+import { ShareButtons } from './ShareButtons'
 import { isRTL } from '@/lib/utils/rtl'
 
 export interface Item {
@@ -37,45 +38,9 @@ const TYPE_CONFIG: Record<string, { label: string; border: string; badge: string
   Pattern:     { label: 'Pattern',     border: 'border-l-orange-500/60',  badge: 'text-orange-400 bg-orange-500/10 border-orange-500/30',    quote: false },
 }
 
-const PUBLIC_BASE = 'https://myweb.tail075174.ts.net/lumina'
-
 export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDeleted?: (id: string) => void; onTagClick?: (tag: string) => void }) {
   const router = useRouter()
   const [deleting, setDeleting] = useState(false)
-  const [copyFeedback, setCopyFeedback] = useState<'copy' | 'link' | null>(null)
-
-  function buildClipboardText(): string {
-    const parts: string[] = []
-    if (item.title) parts.push(item.title)
-    parts.push(item.body)
-    if (item.author) parts.push(`— ${item.author}`)
-    parts.push('✦ Lumina')
-    return parts.join('\n\n')
-  }
-
-  async function handleCopyContent(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(buildClipboardText())
-      setCopyFeedback('copy')
-      setTimeout(() => setCopyFeedback(null), 1500)
-    } catch {
-      // clipboard write failed silently
-    }
-  }
-
-  async function handleCopyLink(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(`${PUBLIC_BASE}/view/${item.id}`)
-      setCopyFeedback('link')
-      setTimeout(() => setCopyFeedback(null), 1500)
-    } catch {
-      // clipboard write failed silently
-    }
-  }
 
   const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.Thought
   const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft
@@ -119,21 +84,14 @@ export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDelete
             <span className="text-[11px] text-zinc-700">
               {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.preventDefault()}>
-              <button
-                onClick={handleCopyContent}
-                className="text-[11px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-500 hover:border-sky-500/50 hover:text-sky-400 transition-colors"
-                title="Copy content"
-              >
-                {copyFeedback === 'copy' ? 'Copied!' : 'Copy'}
-              </button>
-              <button
-                onClick={handleCopyLink}
-                className="text-[11px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-500 hover:border-emerald-500/50 hover:text-emerald-400 transition-colors"
-                title="Copy share link"
-              >
-                {copyFeedback === 'link' ? 'Link copied!' : 'Share'}
-              </button>
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <ShareButtons
+                id={item.id}
+                title={item.title}
+                body={item.body}
+                author={item.author}
+                variant="dark"
+              />
               <Link
                 href={`/item/${item.id}?edit=true`}
                 onClick={(e) => e.stopPropagation()}

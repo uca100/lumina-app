@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { TagBadge } from '@/components/TagBadge'
+import { ShareButtons } from '@/components/ShareButtons'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
 import { isRTL } from '@/lib/utils/rtl'
@@ -199,6 +200,10 @@ export default function ItemPage() {
                 {item.tags.map((tag) => <TagBadge key={tag} tag={tag} />)}
               </div>
             )}
+
+            <div className="px-2 pt-2">
+              <ShareButtons id={item.id} title={item.title} body={item.body} author={item.author} />
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-5">

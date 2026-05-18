@@ -38,7 +38,8 @@ export async function classifyAndSave(
     tags = [...new Set([...(meta?.tags ?? []), ...classified.tags])]
     title = meta?.title ?? classified.title
     summary = classified.summary
-  } catch {
+  } catch (err) {
+    console.error('[classifyAndSave] AI classification failed:', err)
     aiFailed = true
     type = presetType ?? 'Thought'
     author = meta?.author ?? null

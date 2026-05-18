@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Item } from '@/components/ItemCard'
+import { ShareButtons } from '@/components/ShareButtons'
 import { isRTL } from '@/lib/utils/rtl'
 
 const TYPE_BG: Record<string, string> = {
@@ -108,6 +109,16 @@ export default function ViewPage() {
           {item.author && (
             <p className={`text-base italic ${accent} opacity-80`}>— {item.author}</p>
           )}
+
+          {/* date */}
+          <p className="text-xs text-stone-400 mt-4">
+            {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
+
+          {/* share actions */}
+          <div className="mt-6">
+            <ShareButtons id={item.id} title={item.title} body={item.body} author={item.author} />
+          </div>
         </div>
       </main>
 
