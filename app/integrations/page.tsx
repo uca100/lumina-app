@@ -220,7 +220,7 @@ for (const t of draft.tags) {
   else if (THEMATIC.includes(lower)) extraTags.push(lower);
 }
 
-const payload = { body: draft.content, title: draft.title || undefined };
+const payload = { body: draft.content };
 if (typeHint) payload.type = typeHint;
 if (extraTags.length) payload.tags = extraTags;
 
@@ -263,7 +263,7 @@ if (drafts.length === 0) {
       else if (THEMATIC.includes(lower)) extraTags.push(lower);
     }
 
-    const payload = { body: d.content, title: d.title || undefined };
+    const payload = { body: d.content };
     if (typeHint) payload.type = typeHint;
     if (extraTags.length) payload.tags = extraTags;
 
