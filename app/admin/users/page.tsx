@@ -60,7 +60,7 @@ export default function AdminUsersPage() {
       <header className="sticky top-0 z-10 backdrop-blur-md bg-black/40 border-b border-white/5 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-baseline gap-2">
-            <Link href="/" className="text-zinc-500 hover:text-zinc-300 transition-colors text-sm">← Back</Link>
+            <Link href="/admin" className="text-zinc-500 hover:text-zinc-300 transition-colors text-sm">← Admin</Link>
             <span className="text-zinc-700 mx-1">/</span>
             <span className="text-amber-500 text-xl">✦</span>
             <h1 className="font-serif text-2xl font-bold text-white tracking-tight">Users</h1>

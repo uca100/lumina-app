@@ -137,6 +137,13 @@ export default function FeedPage() {
               📱
             </Link>
             <Link
+              href="/admin"
+              className="text-xs px-3 py-1.5 border border-zinc-700 rounded-full text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-all"
+              title="Admin"
+            >
+              ⚙
+            </Link>
+            <Link
               href="/capture"
               className="text-sm px-5 py-1.5 bg-gradient-to-br from-amber-400 to-amber-600 text-black font-bold rounded-full shadow-lg shadow-amber-900/30 hover:from-amber-300 hover:to-amber-500 transition-all"
             >
