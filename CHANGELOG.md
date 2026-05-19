@@ -3,6 +3,13 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.1.2] - 2026-05-19
+
+### Fixed
+- Shortcut ingest endpoint now always lets AI generate the title — any incoming `title` field
+  in the payload is ignored, making the fix robust even for old Drafts scripts that still send
+  `draft.title` (the first line of the body)
+
 ## [1.1.1] - 2026-05-18
 
 ### Added
