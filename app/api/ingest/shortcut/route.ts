@@ -20,7 +20,6 @@ export async function POST(request: Request) {
 
   const result = await classifyAndSave(text.trim(), 'shortcut', {
     author: body?.author,
-    title: body?.title,
     type: body?.type,
     tags: Array.isArray(body?.tags) ? body.tags : undefined,
     userId: user.id,
