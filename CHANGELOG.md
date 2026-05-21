@@ -3,6 +3,12 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.2.1] - 2026-05-21
+
+### Fixed
+- Bulk import now preserves newlines from Telegram `/bulk` command — previously `split(/\s+/)` collapsed multi-line text into one line before preprocessing, so table detection never fired
+- Markdown pipe-table pre-processing in `bulkSave` now correctly converts `|col|col|col|` rows into clean readable text before AI extraction
+
 ## [1.2.0] - 2026-05-21
 
 ### Added

@@ -553,6 +553,43 @@ function savePreclassified(item, source, userId) {
 
 // lib/ingest/bulk.ts
 var CHUNK_SIZE = 8e3;
+function preprocessMarkdownTable(text2) {
+  const lines = text2.trim().split("\n");
+  const pipeLines = lines.filter((l) => l.trim().startsWith("|"));
+  if (pipeLines.length < 3) return text2;
+  const parseRow = (line) => line.split("|").map((c) => c.trim()).filter(Boolean);
+  const dataLines = pipeLines.filter((l) => !/^\s*\|[\s\-:|]+\|\s*$/.test(l));
+  if (dataLines.length === 0) return text2;
+  const rows = dataLines.map(parseRow);
+  const firstRow = rows[0];
+  const isHeader = firstRow.every((c) => c.length < 40 && !c.includes("."));
+  const headers = isHeader ? firstRow : [];
+  const dataRows = isHeader ? rows.slice(1) : rows;
+  const readable = dataRows.filter((row) => row.length > 0 && row.some((c) => c.length > 0)).map((row) => {
+    if (headers.length >= 3 && row.length >= 2) {
+      const title = row[0] ?? "";
+      const body = row[1] ?? "";
+      const examples = row[2] ?? "";
+      const parts = [`**${title}**`];
+      if (body) parts.push(body);
+      if (examples) parts.push(`Examples: ${examples}`);
+      return parts.join("\n");
+    }
+    if (headers.length === 2 && row.length >= 2) {
+      return `**${row[0]}**
+${row[1]}`;
+    }
+    return row.join("\n");
+  }).join("\n\n");
+  return readable || text2;
+}
+function preprocessText(text2) {
+  const trimmed = text2.trim();
+  if (trimmed.split("\n").filter((l) => l.trim().startsWith("|")).length >= 3) {
+    return preprocessMarkdownTable(trimmed);
+  }
+  return trimmed;
+}
 function chunkText(text2) {
   if (text2.length <= CHUNK_SIZE) return [text2];
   const chunks = [];
@@ -572,7 +609,7 @@ ${para}` : para;
   return chunks;
 }
 async function bulkSave(text2, source, userId) {
-  const chunks = chunkText(text2);
+  const chunks = chunkText(preprocessText(text2));
   let saved = 0, duplicates = 0, failed = 0;
   for (const chunk of chunks) {
     let extracted;

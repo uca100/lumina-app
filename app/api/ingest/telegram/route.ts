@@ -176,7 +176,10 @@ export async function POST(request: Request) {
   if (text.startsWith('/')) {
     const parts = text.slice(1).split(/\s+/)
     const cmd = parts[0].toLowerCase()
-    const rest = parts.slice(1).join(' ').trim()
+    // For bulk: preserve newlines so table/structured text isn't collapsed
+    const rest = cmd === 'bulk'
+      ? text.slice(1 + cmd.length).trim()
+      : parts.slice(1).join(' ').trim()
 
     if (cmd === 'bulk') {
       if (!rest) {
