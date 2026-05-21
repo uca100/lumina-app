@@ -1,5 +1,6 @@
 import { ImapFlow } from 'imapflow'
 import { classifyAndSave } from '../ingest/save'
+import { bulkSave } from '../ingest/bulk'
 
 export async function checkEmail() {
   const host = process.env.EMAIL_IMAP_HOST
@@ -15,22 +16,43 @@ export async function checkEmail() {
     logger: false,
   })
 
+  const trigger = (process.env.EMAIL_TRIGGER ?? 'lumina').toLowerCase()
+  const label = process.env.EMAIL_LABEL ?? 'lumina'
+
   await client.connect()
   try {
     const lock = await client.getMailboxLock('INBOX')
     try {
-      const messages = client.fetch({ seen: false }, { envelope: true, bodyStructure: true, source: true })
+      const matched: number[] = []
+      const messages = client.fetch({ seen: false }, { envelope: true, bodyStructure: true, source: true, uid: true })
       for await (const msg of messages) {
-        if (!msg.source) continue
+        if (!msg.source || !msg.uid) continue
         const raw = msg.source.toString()
-        // extract plain text body from raw email
         const body = extractBody(raw)
         const subject = msg.envelope?.subject ?? ''
+
+        // Only process emails that mention the trigger in subject or body
+        if (!subject.toLowerCase().includes(trigger) && !body.toLowerCase().includes(trigger)) continue
         if (!body.trim()) continue
 
-        const combined = subject ? `${subject}\n\n${body}` : body
-        await classifyAndSave(combined.slice(0, 4000), 'email', { title: subject || undefined })
-        await client.messageFlagsAdd(msg.seq, ['\\Seen'])
+        const isBulk = subject.toLowerCase().includes('bulk')
+        if (isBulk) {
+          // Bulk: AI splits the body into multiple items
+          await bulkSave(body.slice(0, 16000), 'email')
+        } else {
+          const combined = subject ? `${subject}\n\n${body}` : body
+          await classifyAndSave(combined.slice(0, 4000), 'email', { title: subject || undefined })
+        }
+        matched.push(msg.uid)
+      }
+
+      if (matched.length) {
+        await client.messageFlagsAdd(matched, ['\\Seen'], { uid: true })
+        // Apply label — create it first if needed, skip silently if it fails
+        try {
+          await client.mailboxCreate(label)
+        } catch { /* already exists */ }
+        await client.messageCopy(matched, label, { uid: true }).catch(() => {})
       }
     } finally {
       lock.release()

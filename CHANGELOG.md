@@ -3,6 +3,22 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.2.0] - 2026-05-21
+
+### Added
+- **Telegram bot commands** — full command set: `/random [type]`, `/today`, `/last [n]`, `/stats`, `/search <query>`, `/help`, plus type-specific save commands (`/quote`, `/lesson`, `/thought`, `/story`, `/habit`, `/affirmation <text>`)
+- **Bulk import** — `/bulk <text>` on Telegram and `lumina bulk` email subject: AI splits a wall of text into individual items and saves them all to the review queue. Auto-batches texts up to 16,000 chars
+- **Telegram integration live** — bot token + webhook configured, chat ID auto-assigned on first message
+- **Email integration live** — Gmail IMAP polling every 15 min; emails with `lumina` in subject or body are saved + marked read + labeled; all others untouched
+- **`bulkExtract` AI function** — separate Claude Haiku call with a prompt tuned for splitting multi-item text into a JSON array
+- **`savePreclassified`** — bypasses AI for bulk items already classified, saves directly to DB as review
+
+### Changed
+- **Integrations page** fully rewritten — status badges (connected/not), commands reference, email trigger docs, bulk import docs, Drafts scripts updated (removed deprecated `pattern` type), iOS Shortcuts section improved
+
+### Fixed
+- Email ingest no longer hangs when Gmail label doesn't exist (was blocking on `getMailboxLock` for non-existent label)
+
 ## [1.1.2] - 2026-05-19
 
 ### Fixed

@@ -414,6 +414,50 @@ Respond ONLY with valid JSON in this exact shape:
 }
 
 No markdown, no explanation, only the JSON object.`;
+var TAG_VOCAB = `mindset, growth, resilience, identity, self-belief, confidence, courage, fear, ego, clarity
+gratitude, presence, awareness, acceptance, peace, joy, love, pain, grief, loneliness
+stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox
+discipline, consistency, focus, habits, rest, energy, health, sleep
+creativity, learning, reading, writing, thinking, curiosity, excellence, mastery
+leadership, communication, relationships, trust, kindness, family, community
+money, career, ambition, risk, failure, success, work, productivity
+mortality, time, urgency, patience, change, uncertainty, faith, spirituality`;
+var BULK_SYSTEM_PROMPT = `You are a content extraction assistant for a personal inspiration app called Lumina.
+
+Given a wall of text, identify all distinct standalone items \u2014 quotes, insights, lessons, affirmations, stories, or thoughts. Each item must make sense on its own without surrounding context.
+
+For each item:
+1. Extract the exact original text as "body" \u2014 do not paraphrase, shorten, or reword
+2. Classify as one of: Quote, Affirmation, Story, Thought, Lesson, Habit
+3. Extract author if clearly attributed in the text (null otherwise)
+4. Generate a short title (max 7 words, no leading "A" or "The")
+5. Choose 3\u20135 tags ONLY from this vocabulary:
+${TAG_VOCAB}
+6. Generate summary: copy the opening 1\u20132 sentences of the item verbatim
+
+Language rule: title and summary must be in the same language as the item content.
+
+Tag rules:
+- Never use the type name as a tag
+- Never use the author's name as a tag
+- No near-duplicates (pick one of resilience/strength/perseverance)
+
+Respond ONLY with a valid JSON array \u2014 no markdown, no explanation:
+[{"body":"...","type":"...","author":null,"title":"...","tags":[...],"summary":"..."}]
+
+Minimum item body length: 20 characters. Ignore headings, page numbers, and filler text.
+If the entire input is one item, return an array with one element.`;
+async function bulkExtract(text2) {
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 8192,
+    system: [{ type: "text", text: BULK_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+    messages: [{ role: "user", content: text2 }]
+  });
+  const raw = response.content[0].type === "text" ? response.content[0].text : "[]";
+  const cleaned = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
+  return JSON.parse(cleaned);
+}
 async function classifyItem(body) {
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -483,6 +527,75 @@ async function classifyAndSave(body, source, meta) {
   }).run();
   return { id, type, tags, title };
 }
+function savePreclassified(item, source, userId) {
+  const normalizedBody = item.body.trim();
+  const existing = db().select().from(items).where((0, import_drizzle_orm2.eq)(items.id, normalizedBody)).get() ?? db().select().from(items).where((0, import_drizzle_orm2.eq)(items.body, normalizedBody)).get();
+  if (existing) return { id: existing.id, duplicate: true };
+  const id = (0, import_nanoid2.nanoid)();
+  const now = Date.now();
+  db().insert(items).values({
+    id,
+    title: item.title,
+    body: normalizedBody,
+    type: item.type,
+    source,
+    author: item.author,
+    summary: item.summary,
+    tags: JSON.stringify(item.tags),
+    status: "review",
+    userId: userId ?? null,
+    synced: 0,
+    createdAt: now,
+    updatedAt: now
+  }).run();
+  return { id, duplicate: false };
+}
+
+// lib/ingest/bulk.ts
+var CHUNK_SIZE = 8e3;
+function chunkText(text2) {
+  if (text2.length <= CHUNK_SIZE) return [text2];
+  const chunks = [];
+  const paragraphs = text2.split(/\n{2,}/);
+  let current = "";
+  for (const para of paragraphs) {
+    if (current.length + para.length + 2 > CHUNK_SIZE && current.length > 0) {
+      chunks.push(current.trim());
+      current = para;
+    } else {
+      current = current ? `${current}
+
+${para}` : para;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
+}
+async function bulkSave(text2, source, userId) {
+  const chunks = chunkText(text2);
+  let saved = 0, duplicates = 0, failed = 0;
+  for (const chunk of chunks) {
+    let extracted;
+    try {
+      extracted = await bulkExtract(chunk);
+    } catch (err) {
+      console.error("[bulkSave] extraction failed for chunk:", err);
+      failed++;
+      continue;
+    }
+    for (const item of extracted) {
+      try {
+        const result = savePreclassified(item, source, userId);
+        if (result.duplicate) duplicates++;
+        else saved++;
+      } catch (err) {
+        console.error("[bulkSave] save failed for item:", item.title, err);
+        failed++;
+      }
+    }
+  }
+  return { saved, duplicates, failed, total: saved + duplicates + failed };
+}
 
 // lib/email/ingest.ts
 async function checkEmail() {
@@ -497,22 +610,40 @@ async function checkEmail() {
     auth: { user, pass },
     logger: false
   });
+  const trigger = (process.env.EMAIL_TRIGGER ?? "lumina").toLowerCase();
+  const label = process.env.EMAIL_LABEL ?? "lumina";
   await client2.connect();
   try {
     const lock = await client2.getMailboxLock("INBOX");
     try {
-      const messages = client2.fetch({ seen: false }, { envelope: true, bodyStructure: true, source: true });
+      const matched = [];
+      const messages = client2.fetch({ seen: false }, { envelope: true, bodyStructure: true, source: true, uid: true });
       for await (const msg of messages) {
-        if (!msg.source) continue;
+        if (!msg.source || !msg.uid) continue;
         const raw = msg.source.toString();
         const body = extractBody(raw);
         const subject = msg.envelope?.subject ?? "";
+        if (!subject.toLowerCase().includes(trigger) && !body.toLowerCase().includes(trigger)) continue;
         if (!body.trim()) continue;
-        const combined = subject ? `${subject}
+        const isBulk = subject.toLowerCase().includes("bulk");
+        if (isBulk) {
+          await bulkSave(body.slice(0, 16e3), "email");
+        } else {
+          const combined = subject ? `${subject}
 
 ${body}` : body;
-        await classifyAndSave(combined.slice(0, 4e3), "email", { title: subject || void 0 });
-        await client2.messageFlagsAdd(msg.seq, ["\\Seen"]);
+          await classifyAndSave(combined.slice(0, 4e3), "email", { title: subject || void 0 });
+        }
+        matched.push(msg.uid);
+      }
+      if (matched.length) {
+        await client2.messageFlagsAdd(matched, ["\\Seen"], { uid: true });
+        try {
+          await client2.mailboxCreate(label);
+        } catch {
+        }
+        await client2.messageCopy(matched, label, { uid: true }).catch(() => {
+        });
       }
     } finally {
       lock.release();

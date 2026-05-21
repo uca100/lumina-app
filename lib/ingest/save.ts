@@ -4,7 +4,7 @@ import { classifyItem } from '../ai/claude'
 import { nanoid } from 'nanoid'
 import { eq } from 'drizzle-orm'
 
-type Source = 'manual' | 'whatsapp' | 'email' | 'voice' | 'telegram' | 'shortcut'
+export type Source = 'manual' | 'whatsapp' | 'email' | 'voice' | 'telegram' | 'shortcut'
 
 const VALID_TYPES = new Set(['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit'])
 
@@ -62,4 +62,34 @@ export async function classifyAndSave(
   }).run()
 
   return { id, type, tags, title }
+}
+
+export function savePreclassified(
+  item: { body: string; type: string; title: string; author: string | null; tags: string[]; summary: string },
+  source: Source,
+  userId?: string
+): { id: string; duplicate: boolean } {
+  const normalizedBody = item.body.trim()
+  const existing = db().select().from(items).where(eq(items.id, normalizedBody)).get()
+    ?? db().select().from(items).where(eq(items.body, normalizedBody)).get()
+  if (existing) return { id: existing.id, duplicate: true }
+
+  const id = nanoid()
+  const now = Date.now()
+  db().insert(items).values({
+    id,
+    title: item.title,
+    body: normalizedBody,
+    type: item.type as any,
+    source,
+    author: item.author,
+    summary: item.summary,
+    tags: JSON.stringify(item.tags),
+    status: 'review',
+    userId: userId ?? null,
+    synced: 0,
+    createdAt: now,
+    updatedAt: now,
+  }).run()
+  return { id, duplicate: false }
 }
