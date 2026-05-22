@@ -22,16 +22,20 @@ export async function GET(req: NextRequest) {
   const conditions = [visibility!]
 
   if (q) {
-    // FTS5 full-text search across title, body, tags — fall back to LIKE on parse error
+    // FTS5 full-text search merged with direct tag LIKE so typing a tag name always works
     try {
       const ftsQuery = q.trim().split(/\s+/).map(w => `"${w.replace(/"/g, '')}"`).join(' ')
-      const matched = rawDb()
+      const ftsMatched = rawDb()
         .prepare('SELECT id FROM items_fts WHERE items_fts MATCH ? ORDER BY rank')
         .all(ftsQuery) as { id: string }[]
-      if (matched.length === 0) return NextResponse.json([])
-      conditions.push(inArray(items.id, matched.map(r => r.id)))
+      const tagMatched = rawDb()
+        .prepare('SELECT id FROM items WHERE tags LIKE ?')
+        .all(`%${q.trim()}%`) as { id: string }[]
+      const allIds = [...new Set([...ftsMatched.map(r => r.id), ...tagMatched.map(r => r.id)])]
+      if (allIds.length === 0) return NextResponse.json([])
+      conditions.push(inArray(items.id, allIds))
     } catch {
-      conditions.push(like(items.body, `%${q}%`))
+      conditions.push(or(like(items.body, `%${q}%`), like(items.tags, `%${q}%`))!)
     }
   }
 
