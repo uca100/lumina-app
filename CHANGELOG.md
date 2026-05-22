@@ -161,6 +161,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ---
 
+
+## [Unreleased] - 2026-05-23
+
+### Added
+- install.sh: full idempotent setup script for fresh server restore
+- Mirrored to ~/projects/install-scripts/lumina.sh
+- Architecture diagram and folder structure added to Notion project page
+
 ## [Unreleased] - 2026-05-14
 
 ### Fixed
