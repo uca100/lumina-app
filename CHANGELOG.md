@@ -3,6 +3,14 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.3.0] - 2026-05-23
+
+### Added
+- Search now also matches by tag name — the `q` text search unions FTS results with a direct `LIKE` on the tags column, so typing a tag name in the search box reliably surfaces items with that tag
+
+### Fixed
+- Share links (`/view/[id]`) now work for anonymous users — added nginx bypasses for `/lumina/_next/` (JS assets) and `/lumina/api/items/[id]/public` (item data API) so the view page loads fully without a Tailscale auth-gateway session
+
 ## [1.2.1] - 2026-05-21
 
 ### Fixed
