@@ -74,7 +74,7 @@ function randomMinutesInWindow(count: number, windowStart: number): number[] {
 }
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10)
+  return new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local time
 }
 
 export async function scheduleSingleDailyRandom(schedule: typeof reminderSchedules.$inferSelect) {
