@@ -3,6 +3,11 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.3.1] - 2026-05-23
+
+### Fixed
+- Daily reminders were silently skipped after 03:00 AM local time (IDT/UTC+3) — `todayStr()` used `toISOString()` which returns UTC, causing the date to mismatch. Fixed by using `toLocaleDateString('en-CA')` which returns local-time YYYY-MM-DD
+
 ## [1.3.0] - 2026-05-23
 
 ### Added
