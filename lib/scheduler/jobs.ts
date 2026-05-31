@@ -28,7 +28,7 @@ async function fireReminder(schedule: typeof reminderSchedules.$inferSelect, use
       ? or(eq(items.userId, user.id), isNull(items.userId))
       : isNull(items.userId)
     const all = types.length
-      ? db().select().from(items).where(and(visibility!, eq(items.status, 'published'), inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit')[]))).all()
+      ? db().select().from(items).where(and(visibility!, eq(items.status, 'published'), inArray(items.type, types as ('Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Advice')[]))).all()
       : db().select().from(items).where(and(visibility!, eq(items.status, 'published'))).all()
     if (!all.length) return
     pick = weightedPick(all)

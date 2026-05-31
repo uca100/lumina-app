@@ -58,7 +58,7 @@ var items = (0, import_sqlite_core.sqliteTable)("items", {
   id: (0, import_sqlite_core.text)("id").primaryKey(),
   title: (0, import_sqlite_core.text)("title"),
   body: (0, import_sqlite_core.text)("body").notNull(),
-  type: (0, import_sqlite_core.text)("type", { enum: ["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit", "Pattern"] }).notNull().default("Thought"),
+  type: (0, import_sqlite_core.text)("type", { enum: ["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit", "Pattern", "Advice"] }).notNull().default("Thought"),
   source: (0, import_sqlite_core.text)("source", { enum: ["manual", "whatsapp", "email", "voice", "telegram", "shortcut"] }).notNull().default("manual"),
   author: (0, import_sqlite_core.text)("author"),
   tags: (0, import_sqlite_core.text)("tags").notNull().default("[]"),
@@ -196,8 +196,13 @@ function ensureSchema(sqlite) {
       minute INTEGER NOT NULL,
       types_filter TEXT NOT NULL DEFAULT '[]',
       item_id TEXT,
+      mode TEXT NOT NULL DEFAULT 'fixed',
+      count INTEGER NOT NULL DEFAULT 1,
       enabled INTEGER NOT NULL DEFAULT 1,
       chat_id INTEGER,
+      user_id TEXT,
+      daily_fire_minutes TEXT NOT NULL DEFAULT '[]',
+      daily_fire_date TEXT NOT NULL DEFAULT '',
       created_at INTEGER NOT NULL
     );
   `);
@@ -372,7 +377,7 @@ var import_sdk = __toESM(require("@anthropic-ai/sdk"));
 var client = new import_sdk.default({ apiKey: process.env.CLAUDE_API_KEY });
 var SYSTEM_PROMPT = `You are a content classifier for a personal inspiration app called Lumina.
 When given a piece of text, you will:
-1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, or Habit
+1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, Habit, or Advice
 2. Extract the author if present (for quotes)
 3. Choose 3\u20135 tags from the vocabulary below
 4. Generate a short title (max 7 words, no articles like "A" or "The" at start)
@@ -387,15 +392,16 @@ Definitions:
 - Thought: A personal reflection, idea, or insight
 - Lesson: A key takeaway, learning, or principle derived from experience
 - Habit: A routine, practice, or behavioral pattern worth building
+- Advice: Practical guidance, suggestions, or wisdom for action (e.g., business, career, or life decisions)
 
 ## Tag vocabulary (use ONLY these, all lowercase, pick the most specific fit):
 mindset, growth, resilience, identity, self-belief, confidence, courage, fear, ego, clarity
 gratitude, presence, awareness, acceptance, peace, joy, love, pain, grief, loneliness
-stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox
+stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox, buddhism
 discipline, consistency, focus, habits, rest, energy, health, sleep
 creativity, learning, reading, writing, thinking, curiosity, excellence, mastery
 leadership, communication, relationships, trust, kindness, family, community
-money, career, ambition, risk, failure, success, work, productivity
+money, career, ambition, risk, failure, success, work, productivity, business, strategy, marketing, sales
 mortality, time, urgency, patience, change, uncertainty, faith, spirituality
 
 Rules for tags:
@@ -406,7 +412,7 @@ Rules for tags:
 
 Respond ONLY with valid JSON in this exact shape:
 {
-  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit",
+  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit" | "Advice",
   "author": string | null,
   "tags": string[],
   "title": string,
@@ -416,19 +422,19 @@ Respond ONLY with valid JSON in this exact shape:
 No markdown, no explanation, only the JSON object.`;
 var TAG_VOCAB = `mindset, growth, resilience, identity, self-belief, confidence, courage, fear, ego, clarity
 gratitude, presence, awareness, acceptance, peace, joy, love, pain, grief, loneliness
-stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox
+stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox, buddhism
 discipline, consistency, focus, habits, rest, energy, health, sleep
 creativity, learning, reading, writing, thinking, curiosity, excellence, mastery
 leadership, communication, relationships, trust, kindness, family, community
-money, career, ambition, risk, failure, success, work, productivity
+money, career, ambition, risk, failure, success, work, productivity, business, strategy, marketing, sales
 mortality, time, urgency, patience, change, uncertainty, faith, spirituality`;
 var BULK_SYSTEM_PROMPT = `You are a content extraction assistant for a personal inspiration app called Lumina.
 
-Given a wall of text, identify all distinct standalone items \u2014 quotes, insights, lessons, affirmations, stories, or thoughts. Each item must make sense on its own without surrounding context.
+Given a wall of text, identify all distinct standalone items \u2014 quotes, insights, lessons, affirmations, stories, thoughts, or advice. Each item must make sense on its own without surrounding context.
 
 For each item:
 1. Extract the exact original text as "body" \u2014 do not paraphrase, shorten, or reword
-2. Classify as one of: Quote, Affirmation, Story, Thought, Lesson, Habit
+2. Classify as one of: Quote, Affirmation, Story, Thought, Lesson, Habit, Advice
 3. Extract author if clearly attributed in the text (null otherwise)
 4. Generate a short title (max 7 words, no leading "A" or "The")
 5. Choose 3\u20135 tags ONLY from this vocabulary:
@@ -479,7 +485,7 @@ async function classifyItem(body) {
 // lib/ingest/save.ts
 var import_nanoid2 = require("nanoid");
 var import_drizzle_orm2 = require("drizzle-orm");
-var VALID_TYPES = /* @__PURE__ */ new Set(["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit"]);
+var VALID_TYPES = /* @__PURE__ */ new Set(["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit", "Advice"]);
 async function classifyAndSave(body, source, meta) {
   const normalizedBody = body.trim();
   const existing = db().select().from(items).where((0, import_drizzle_orm2.eq)(items.body, normalizedBody)).get();
@@ -821,7 +827,7 @@ function randomMinutesInWindow(count, windowStart) {
   return result;
 }
 function todayStr() {
-  return (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  return (/* @__PURE__ */ new Date()).toLocaleDateString("en-CA");
 }
 async function scheduleSingleDailyRandom(schedule) {
   const user = resolveUser(schedule);

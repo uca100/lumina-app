@@ -100,8 +100,13 @@ function ensureSchema(sqlite: Database.Database) {
       minute INTEGER NOT NULL,
       types_filter TEXT NOT NULL DEFAULT '[]',
       item_id TEXT,
+      mode TEXT NOT NULL DEFAULT 'fixed',
+      count INTEGER NOT NULL DEFAULT 1,
       enabled INTEGER NOT NULL DEFAULT 1,
       chat_id INTEGER,
+      user_id TEXT,
+      daily_fire_minutes TEXT NOT NULL DEFAULT '[]',
+      daily_fire_date TEXT NOT NULL DEFAULT '',
       created_at INTEGER NOT NULL
     );
   `)

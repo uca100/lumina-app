@@ -1,17 +1,12 @@
-'use client'
-
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import Link from 'next/link'
 import { TagBadge } from './TagBadge'
-import { ShareButtons } from './ShareButtons'
-import { isRTL } from '@/lib/utils/rtl'
 
 export interface Item {
   id: string
   title: string | null
   body: string
-  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern'
+  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Pattern' | 'Advice'
   source: string
   author: string | null
   tags: string[]
@@ -19,124 +14,95 @@ export interface Item {
   pinned: number
   status: 'draft' | 'review' | 'published'
   mark: number
+  summary: string | null
   createdAt: number
+  updatedAt: number
 }
 
-const STATUS_CONFIG: Record<string, { label: string; badge: string }> = {
-  draft:     { label: 'Draft',     badge: 'text-zinc-500 bg-zinc-800/60 border-zinc-700/60' },
-  review:    { label: 'Review',    badge: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
-  published: { label: 'Published', badge: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
-}
-
-const TYPE_CONFIG: Record<string, { label: string; border: string; badge: string; quote: boolean }> = {
+const TYPE_CONFIG: Record<string, { label: string, border: string, badge: string, quote: boolean }> = {
   Quote:       { label: 'Quote',       border: 'border-l-sky-500/60',     badge: 'text-sky-400 bg-sky-500/10 border-sky-500/30',             quote: true  },
   Affirmation: { label: 'Affirmation', border: 'border-l-emerald-500/60', badge: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30', quote: false },
   Story:       { label: 'Story',       border: 'border-l-violet-500/60',  badge: 'text-violet-400 bg-violet-500/10 border-violet-500/30',    quote: false },
   Thought:     { label: 'Thought',     border: 'border-l-amber-500/60',   badge: 'text-amber-400 bg-amber-500/10 border-amber-500/30',       quote: false },
   Lesson:      { label: 'Lesson',      border: 'border-l-rose-500/60',    badge: 'text-rose-400 bg-rose-500/10 border-rose-500/30',          quote: false },
   Habit:       { label: 'Habit',       border: 'border-l-teal-500/60',    badge: 'text-teal-400 bg-teal-500/10 border-teal-500/30',          quote: false },
+  Advice:      { label: 'Advice',      border: 'border-l-indigo-500/60', badge: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30', quote: false },
   Pattern:     { label: 'Pattern',     border: 'border-l-orange-500/60',  badge: 'text-orange-400 bg-orange-500/10 border-orange-500/30',    quote: false },
 }
 
 export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDeleted?: (id: string) => void; onTagClick?: (tag: string) => void }) {
   const router = useRouter()
-  const [deleting, setDeleting] = useState(false)
+  const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.Thought
+  
+  const isHebrew = (text: string) => /[\u0590-\u05FF]/.test(text)
+  const bodyRTL = isHebrew(item.body)
+  const titleRTL = item.title ? isHebrew(item.title) : false
 
-  const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.Thought
-  const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft
-  const preview = item.body.length > 220 ? item.body.slice(0, 220) + '…' : item.body
-  const attribution = item.author || (item.source !== 'manual' ? item.source : null)
-  const titleRTL = item.title ? isRTL(item.title) : false
-  const bodyRTL = isRTL(item.body)
-
-  async function handleDelete(e: React.MouseEvent) {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     if (!confirm('Delete this item?')) return
-    setDeleting(true)
-    await fetch(`/lumina/api/items/${item.id}`, { method: 'DELETE' })
-    if (onDeleted) onDeleted(item.id)
-    else router.refresh()
+    
+    const res = await fetch(`/api/items/${item.id}`, { method: 'DELETE' })
+    if (res.ok) onDeleted?.(item.id)
   }
 
   return (
-    <Link href={`/item/${item.id}`} className="block group">
-      <article className={`relative bg-zinc-900/60 border border-white/5 border-l-4 ${cfg.border} rounded-2xl px-6 py-5 backdrop-blur-sm hover:bg-zinc-900/80 hover:border-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30`}>
-
-        {/* header row */}
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-1.5">
-            <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${cfg.badge}`}>
-              {cfg.label}
+    <Link href={`/item/${item.id}`}>
+      <article className={`group relative bg-zinc-900/40 border border-zinc-800/50 hover:border-zinc-700/80 rounded-2xl p-6 transition-all active:scale-[0.98] ${config.border} border-l-4`}>
+        <div className="flex justify-between items-start mb-4 gap-4">
+          <div className="flex flex-wrap gap-2">
+            <span className={`text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full border ${config.badge}`}>
+              {config.label}
             </span>
-            {item.status !== 'published' && (
-              <span className={`text-[10px] font-medium uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusCfg.badge}`}>
-                {statusCfg.label}
+            {item.pinned === 1 && (
+              <span className="text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full border text-amber-400 bg-amber-500/10 border-amber-500/30">
+                Pinned
               </span>
             )}
-            {item.mark != null && item.mark !== 2 && (
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${item.mark === 3 ? 'text-amber-400' : 'text-zinc-600'}`} title={item.mark === 1 ? 'Low priority' : item.mark === 3 ? 'High priority' : ''}>
-                {'●'.repeat(item.mark)}{'○'.repeat(3 - item.mark)}
+            {item.status === 'review' && (
+              <span className="text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full border text-rose-400 bg-rose-500/10 border-rose-500/30">
+                Review
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] text-zinc-700">
-              {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <ShareButtons
-                id={item.id}
-                title={item.title}
-                body={item.body}
-                author={item.author}
-                variant="dark"
-              />
-              <Link
-                href={`/item/${item.id}?edit=true`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-[11px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-500 hover:border-amber-500/50 hover:text-amber-400 transition-colors"
-              >
-                Edit
-              </Link>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="text-[11px] px-2 py-0.5 rounded-full border border-red-900/50 text-red-500/60 hover:bg-red-950/40 hover:text-red-400 transition-colors disabled:opacity-40"
-              >
-                {deleting ? '…' : 'Delete'}
-              </button>
-            </div>
-          </div>
+          
+          <button 
+            onClick={handleDelete}
+            className="opacity-0 group-hover:opacity-100 p-2 -m-2 text-zinc-500 hover:text-rose-400 transition-all"
+            title="Delete item"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
         </div>
 
-        {cfg.quote && (
-          <div className="text-5xl font-serif text-zinc-700 leading-none mb-1 select-none">"</div>
-        )}
-
         {item.title && (
-          <h3
-            dir={titleRTL ? 'rtl' : 'ltr'}
-            className={`font-serif text-xl font-bold text-zinc-100 mb-2 leading-snug group-hover:text-amber-100 transition-colors${titleRTL ? ' text-right rtl-text' : ''}`}
-          >
+          <h2 className={`text-xl font-bold text-zinc-100 mb-3 group-hover:text-white transition-colors leading-tight ${titleRTL ? 'text-right rtl-text' : ''}`}>
             {item.title}
-          </h3>
+          </h2>
         )}
 
-        <p
-          dir={bodyRTL ? 'rtl' : 'ltr'}
-          className={`text-zinc-400 leading-relaxed mb-4 ${cfg.quote ? 'font-serif text-base italic text-zinc-300' : 'text-sm'}${bodyRTL ? ' text-right rtl-text' : ''}`}
-        >
-          {preview}
-        </p>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          {attribution && (
-            <span className="text-[11px] text-zinc-600 italic mr-1">— {attribution}</span>
+        <div className="relative">
+          {config.quote && (
+            <span className="absolute -top-2 -left-3 text-4xl text-zinc-800 font-serif select-none pointer-events-none">"</span>
           )}
-          {item.tags.map((tag) => (
-            <TagBadge
-              key={tag}
+          <p className={`text-zinc-400 leading-relaxed line-clamp-4 ${bodyRTL ? 'text-right rtl-text' : ''} ${config.quote ? 'italic font-serif' : ''}`}>
+            {item.body}
+          </p>
+        </div>
+
+        {item.author && (
+          <div className={`mt-4 text-sm font-medium text-zinc-500 ${bodyRTL ? 'text-right' : ''}`}>
+             — {item.author}
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {item.tags.map(tag => (
+            <TagBadge 
+              key={tag} 
               tag={tag}
               onClick={onTagClick ? (e) => { e.preventDefault(); e.stopPropagation(); onTagClick(tag) } : undefined}
             />

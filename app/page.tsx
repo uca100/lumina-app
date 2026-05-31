@@ -32,6 +32,7 @@ export default function FeedPage() {
   const [shuffling, setShuffling] = useState(false)
   const [debouncedQ, setDebouncedQ] = useState('')
   const [version, setVersion] = useState('')
+  const [tagsExpanded, setTagsExpanded] = useState(false)
 
   useEffect(() => {
     fetch('/lumina/api/version').then(r => r.json()).then(d => setVersion(`v${d.version}`))
@@ -45,15 +46,21 @@ export default function FeedPage() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
-    const params = new URLSearchParams()
-    if (debouncedQ) params.set('q', debouncedQ)
-    if (type) params.set('type', type)
-    if (tag) params.set('tag', tag)
-    if (status) params.set('status', status)
-    const res = await fetch(`/lumina/api/items?${params}`)
-    const data = await res.json()
-    setItems(data)
-    setLoading(false)
+    try {
+      const params = new URLSearchParams()
+      if (debouncedQ) params.set('q', debouncedQ)
+      if (type) params.set('type', type)
+      if (tag) params.set('tag', tag)
+      if (status) params.set('status', status)
+      const res = await fetch(`/lumina/api/items?${params}`)
+      const data = await res.json()
+      setItems(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('[fetchItems] error:', err)
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
   }, [debouncedQ, type, tag, status])
 
   useEffect(() => { fetchItems() }, [fetchItems])
@@ -209,24 +216,32 @@ export default function FeedPage() {
           </div>
 
           {allTags.length > 0 && (
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pt-1 pb-0.5 -mx-1 px-1">
-              {tag && (
-                <button
-                  onClick={() => setTag('')}
-                  className="shrink-0 px-3 py-1 rounded-full text-xs border border-amber-500/60 bg-amber-500/15 text-amber-400 font-medium"
-                >
-                  #{tag} ✕
-                </button>
-              )}
-              {allTags.filter(({ tag: t }) => t !== tag).map(({ tag: t, count }) => (
-                <button
-                  key={t}
-                  onClick={() => setTag(t)}
-                  className="shrink-0 px-3 py-1 rounded-full text-xs border border-zinc-800 text-zinc-600 bg-zinc-900/40 hover:border-zinc-600 hover:text-zinc-400 transition-all"
-                >
-                  #{t} <span className="opacity-40 ml-0.5">{count}</span>
-                </button>
-              ))}
+            <div className="space-y-2">
+              <div className={`flex flex-wrap gap-1.5 pt-1 pb-0.5 overflow-hidden transition-all duration-300 ${tagsExpanded ? 'max-h-[1000px]' : 'max-h-[32px]'}`}>
+                {tag && (
+                  <button
+                    onClick={() => setTag('')}
+                    className="px-3 py-1 rounded-full text-xs border border-amber-500/60 bg-amber-500/15 text-amber-400 font-medium"
+                  >
+                    #{tag} ✕
+                  </button>
+                )}
+                {allTags.filter(({ tag: t }) => t !== tag).map(({ tag: t, count }) => (
+                  <button
+                    key={t}
+                    onClick={() => setTag(t)}
+                    className="px-3 py-1 rounded-full text-xs border border-zinc-800 text-zinc-600 bg-zinc-900/40 hover:border-zinc-600 hover:text-zinc-400 transition-all"
+                  >
+                    #{t} <span className="opacity-40 ml-0.5">{count}</span>
+                  </button>
+                ))}
+              </div>
+              <button 
+                onClick={() => setTagsExpanded(!tagsExpanded)}
+                className="text-[10px] text-zinc-500 hover:text-zinc-300 uppercase tracking-widest font-bold transition-colors ml-1"
+              >
+                {tagsExpanded ? '↑ Show less' : '↓ Show all tags'}
+              </button>
             </div>
           )}
         </div>

@@ -3,6 +3,17 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.3.2] - 2026-05-31
+
+### Added
+- New **Advice** item type for business, career, and practical guidance
+- Enhanced **Buddhism** support: expanded AI tag vocabulary and migrated existing Buddhist content
+- Collapsible **Tag Cloud** UI: tags now wrap and can be expanded/collapsed for better readability
+
+### Fixed
+- Frontend resilience: Search no longer gets stuck on "Loading" during API/data errors
+- Database schema: Fixed missing columns in production and repaired malformed JSON tags
+
 ## [1.3.1] - 2026-05-23
 
 ### Fixed

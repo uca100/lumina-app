@@ -4,7 +4,7 @@ const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY })
 
 const SYSTEM_PROMPT = `You are a content classifier for a personal inspiration app called Lumina.
 When given a piece of text, you will:
-1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, or Habit
+1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, Habit, or Advice
 2. Extract the author if present (for quotes)
 3. Choose 3–5 tags from the vocabulary below
 4. Generate a short title (max 7 words, no articles like "A" or "The" at start)
@@ -19,15 +19,16 @@ Definitions:
 - Thought: A personal reflection, idea, or insight
 - Lesson: A key takeaway, learning, or principle derived from experience
 - Habit: A routine, practice, or behavioral pattern worth building
+- Advice: Practical guidance, suggestions, or wisdom for action (e.g., business, career, or life decisions)
 
 ## Tag vocabulary (use ONLY these, all lowercase, pick the most specific fit):
 mindset, growth, resilience, identity, self-belief, confidence, courage, fear, ego, clarity
 gratitude, presence, awareness, acceptance, peace, joy, love, pain, grief, loneliness
-stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox
+stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox, buddhism
 discipline, consistency, focus, habits, rest, energy, health, sleep
 creativity, learning, reading, writing, thinking, curiosity, excellence, mastery
 leadership, communication, relationships, trust, kindness, family, community
-money, career, ambition, risk, failure, success, work, productivity
+money, career, ambition, risk, failure, success, work, productivity, business, strategy, marketing, sales
 mortality, time, urgency, patience, change, uncertainty, faith, spirituality
 
 Rules for tags:
@@ -38,7 +39,7 @@ Rules for tags:
 
 Respond ONLY with valid JSON in this exact shape:
 {
-  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit",
+  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit" | "Advice",
   "author": string | null,
   "tags": string[],
   "title": string,
@@ -49,20 +50,20 @@ No markdown, no explanation, only the JSON object.`
 
 const TAG_VOCAB = `mindset, growth, resilience, identity, self-belief, confidence, courage, fear, ego, clarity
 gratitude, presence, awareness, acceptance, peace, joy, love, pain, grief, loneliness
-stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox
+stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox, buddhism
 discipline, consistency, focus, habits, rest, energy, health, sleep
 creativity, learning, reading, writing, thinking, curiosity, excellence, mastery
 leadership, communication, relationships, trust, kindness, family, community
-money, career, ambition, risk, failure, success, work, productivity
+money, career, ambition, risk, failure, success, work, productivity, business, strategy, marketing, sales
 mortality, time, urgency, patience, change, uncertainty, faith, spirituality`
 
 const BULK_SYSTEM_PROMPT = `You are a content extraction assistant for a personal inspiration app called Lumina.
 
-Given a wall of text, identify all distinct standalone items — quotes, insights, lessons, affirmations, stories, or thoughts. Each item must make sense on its own without surrounding context.
+Given a wall of text, identify all distinct standalone items — quotes, insights, lessons, affirmations, stories, thoughts, or advice. Each item must make sense on its own without surrounding context.
 
 For each item:
 1. Extract the exact original text as "body" — do not paraphrase, shorten, or reword
-2. Classify as one of: Quote, Affirmation, Story, Thought, Lesson, Habit
+2. Classify as one of: Quote, Affirmation, Story, Thought, Lesson, Habit, Advice
 3. Extract author if clearly attributed in the text (null otherwise)
 4. Generate a short title (max 7 words, no leading "A" or "The")
 5. Choose 3–5 tags ONLY from this vocabulary:
@@ -84,7 +85,7 @@ If the entire input is one item, return an array with one element.`
 
 export type BulkItem = {
   body: string
-  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
+  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Advice'
   author: string | null
   title: string
   tags: string[]
@@ -104,7 +105,7 @@ export async function bulkExtract(text: string): Promise<BulkItem[]> {
 }
 
 export async function classifyItem(body: string): Promise<{
-  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'
+  type: 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Advice'
   author: string | null
   tags: string[]
   title: string

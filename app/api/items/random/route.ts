@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const visibility = or(eq(items.userId, userId), isNull(items.userId))
 
   const all = typeParam
-    ? db().select().from(items).where(and(visibility!, eq(items.status, 'published'), eq(items.type, typeParam as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit'))).all()
+    ? db().select().from(items).where(and(visibility!, eq(items.status, 'published'), eq(items.type, typeParam as 'Quote' | 'Affirmation' | 'Story' | 'Thought' | 'Lesson' | 'Habit' | 'Advice'))).all()
     : db().select().from(items).where(and(visibility!, eq(items.status, 'published'))).all()
 
   if (!all.length) return NextResponse.json({ error: 'No items' }, { status: 404 })
