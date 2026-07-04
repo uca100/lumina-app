@@ -3,6 +3,12 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.3.3] - 2026-07-04
+
+### Fixed
+- **Capture page was completely broken**: `CaptureForm` fetched `/api/classify` and `/api/items` without the app's `/lumina` basePath, so Magic Classify and Save both silently 404'd
+- **Capture page missing header**: added the standard header (back link, title, user badge) shared by every other page — Capture previously rendered with no nav at all
+
 ## [1.3.2] - 2026-05-31
 
 ### Added
