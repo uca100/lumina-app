@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { UserBadge } from '@/components/UserBadge'
 
 const TYPES = ['Quote', 'Affirmation', 'Story', 'Thought', 'Lesson', 'Habit', 'Advice', 'Pattern'] as const
 
@@ -25,8 +27,9 @@ export function CaptureForm() {
   const handleClassify = async () => {
     if (!body.trim()) return
     try {
-      const res = await fetch('/api/classify', {
+      const res = await fetch('/lumina/api/classify', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body }),
       })
       const data = await res.json()
@@ -40,8 +43,9 @@ export function CaptureForm() {
     if (!body.trim()) return
     setSaving(true)
     try {
-      const res = await fetch('/api/items', {
+      const res = await fetch('/lumina/api/items', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body, type, source: 'manual' }),
       })
       if (res.ok) {
@@ -56,7 +60,19 @@ export function CaptureForm() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 pb-12">
+    <div className="min-h-screen text-white" style={{ background: 'radial-gradient(ellipse at top, #1c1408 0%, #0d0d0d 60%)' }}>
+      <header className="sticky top-0 z-10 backdrop-blur-md bg-black/40 border-b border-white/5 px-6 py-4">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors">← Lumina</Link>
+            <span className="text-zinc-700">/</span>
+            <h1 className="text-white font-semibold">Capture</h1>
+          </div>
+          <UserBadge />
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-6 py-10 space-y-8 pb-12">
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
           {TYPES.map((t) => (
@@ -108,6 +124,7 @@ export function CaptureForm() {
         </div>
 
       </div>
+      </main>
     </div>
   )
 }
