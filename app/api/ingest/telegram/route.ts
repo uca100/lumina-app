@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { classifyAndSave } from '@/lib/ingest/save'
-import { bulkSave } from '@/lib/ingest/bulk'
+import { bulkSave, type BulkSaveResult } from '@/lib/ingest/bulk'
 import { sendMessage } from '@/lib/telegram/bot'
 import { db, rawDb } from '@/lib/db/client'
 import { items, users } from '@/lib/db/schema'
@@ -41,6 +41,15 @@ function savedReply(result: { type: string; tags: string[]; duplicate?: boolean 
   return `✦ Saved as *${result.type}*${tags}`
 }
 
+function bulkReply(result: BulkSaveResult): string {
+  const parts: string[] = ['✦ Bulk import complete']
+  if (result.saved) parts.push(`${result.saved} saved`)
+  if (result.duplicates) parts.push(`${result.duplicates} already existed`)
+  if (result.failed) parts.push(`${result.failed} failed`)
+  parts.push('→ review queue')
+  return parts.join(' · ')
+}
+
 async function handleCommand(cmd: string, rest: string, user: User | null): Promise<string> {
   const database = db()
   const userId = user?.id ?? null
@@ -57,7 +66,7 @@ async function handleCommand(cmd: string, rest: string, user: User | null): Prom
         '`/story <text>` `/habit <text>` `/affirmation <text>`',
         '',
         '*Bulk import:*',
-        '`/bulk <text>` — AI splits wall of text into individual items → review queue',
+        '`/bulk <text>` — explicitly split a wall of text into items → review queue',
         '',
         '*Browse:*',
         '`/random [type]` — random item (optionally filtered)',
@@ -66,7 +75,7 @@ async function handleCommand(cmd: string, rest: string, user: User | null): Prom
         '`/search <query>` — full-text search',
         '`/stats` — collection overview',
         '',
-        'Or just send any text — AI classifies it automatically.',
+        'Or just send any text — AI classifies it. Multi-item pastes are auto-split → review queue.',
       ].join('\n')
 
     case 'random': {
@@ -187,12 +196,7 @@ export async function POST(request: Request) {
       } else {
         await sendMessage(chatId, '⏳ Analyzing your text...')
         const result = await bulkSave(rest, 'telegram', user?.id)
-        const parts: string[] = ['✦ Bulk import complete']
-        if (result.saved) parts.push(`${result.saved} saved`)
-        if (result.duplicates) parts.push(`${result.duplicates} already existed`)
-        if (result.failed) parts.push(`${result.failed} failed`)
-        parts.push('→ review queue')
-        await sendMessage(chatId, parts.join(' · '))
+        await sendMessage(chatId, bulkReply(result))
       }
       return NextResponse.json({ ok: true })
     }
@@ -203,8 +207,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await classifyAndSave(text, 'telegram', { userId: user?.id })
-    await sendMessage(chatId, savedReply(result))
+    const result = await bulkSave(text, 'telegram', user?.id)
+    if (result.total === 0) {
+      const fallback = await classifyAndSave(text, 'telegram', { userId: user?.id })
+      await sendMessage(chatId, savedReply(fallback))
+    } else if (result.total === 1) {
+      const item = result.items[0]
+      await sendMessage(chatId, savedReply(item))
+    } else {
+      await sendMessage(chatId, bulkReply(result))
+    }
   } catch {
     await sendMessage(chatId, '⚠️ Could not save. Try again.')
   }

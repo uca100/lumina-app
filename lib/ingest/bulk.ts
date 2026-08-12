@@ -75,13 +75,29 @@ function chunkText(text: string): string[] {
   return chunks
 }
 
+export type BulkSaveItem = {
+  type: string
+  tags: string[]
+  title: string | null
+  duplicate: boolean
+}
+
+export type BulkSaveResult = {
+  saved: number
+  duplicates: number
+  failed: number
+  total: number
+  items: BulkSaveItem[]
+}
+
 export async function bulkSave(
   text: string,
   source: Source,
   userId?: string
-): Promise<{ saved: number; duplicates: number; failed: number; total: number }> {
+): Promise<BulkSaveResult> {
   const chunks = chunkText(preprocessText(text))
   let saved = 0, duplicates = 0, failed = 0
+  const items: BulkSaveItem[] = []
 
   for (const chunk of chunks) {
     let extracted
@@ -98,6 +114,12 @@ export async function bulkSave(
         const result = savePreclassified(item, source, userId)
         if (result.duplicate) duplicates++
         else saved++
+        items.push({
+          type: item.type,
+          tags: item.tags,
+          title: item.title,
+          duplicate: result.duplicate,
+        })
       } catch (err) {
         console.error('[bulkSave] save failed for item:', item.title, err)
         failed++
@@ -105,5 +127,5 @@ export async function bulkSave(
     }
   }
 
-  return { saved, duplicates, failed, total: saved + duplicates + failed }
+  return { saved, duplicates, failed, total: saved + duplicates + failed, items }
 }

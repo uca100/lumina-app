@@ -158,7 +158,7 @@ export default function IntegrationsPage() {
             <div className="pt-4 space-y-4 text-xs text-zinc-400">
               <div className="space-y-2">
                 <p className="text-zinc-500 uppercase tracking-widest text-[10px]">Save</p>
-                <p>Send any text → AI classifies and saves it automatically.</p>
+                <p>Send any text → AI classifies it. Multi-item pastes are auto-split into the review queue.</p>
                 <div className="grid grid-cols-2 gap-1.5 font-mono text-[11px]">
                   {['/quote', '/lesson', '/thought', '/story', '/habit', '/affirmation'].map(cmd => (
                     <code key={cmd} className="bg-zinc-800 px-2 py-1 rounded text-amber-200">{cmd} &lt;text&gt;</code>
@@ -169,7 +169,7 @@ export default function IntegrationsPage() {
               <div className="space-y-2">
                 <p className="text-zinc-500 uppercase tracking-widest text-[10px]">Bulk Import</p>
                 <code className="bg-zinc-800 px-2 py-1 rounded text-amber-200 font-mono text-[11px] block">/bulk &lt;wall of text&gt;</code>
-                <p className="text-[11px] text-zinc-500">AI splits the text into individual items and saves them all to the review queue.</p>
+                <p className="text-[11px] text-zinc-500">Optional explicit split. Pasting multi-item text without /bulk is auto-split the same way → review queue.</p>
               </div>
               <div className="space-y-2">
                 <p className="text-zinc-500 uppercase tracking-widest text-[10px]">Browse</p>

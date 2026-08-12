@@ -3,6 +3,16 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.4.0] - 2026-08-12
+
+### Added
+- Telegram plain-text pastes are auto-split via AI bulk extraction — multi-item messages no longer require `/bulk`
+- Single-item pastes keep the existing “Saved as Type” reply; multi-item pastes get the bulk summary; empty extract falls back to single classify
+
+### Changed
+- `bulkSave` now returns per-item type/tags/title/duplicate for reply formatting
+- Integrations page and `/help` document auto-split behavior; `/bulk` remains as an explicit opt-in
+
 ## [1.3.3] - 2026-07-04
 
 ### Fixed
