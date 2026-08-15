@@ -42,12 +42,19 @@ function savedReply(result: { type: string; tags: string[]; duplicate?: boolean 
 }
 
 function bulkReply(result: BulkSaveResult): string {
-  const parts: string[] = ['✦ Bulk import complete']
+  const parts: string[] = [`✦ Bulk import complete · ${result.total} item${result.total === 1 ? '' : 's'}`]
   if (result.saved) parts.push(`${result.saved} saved`)
   if (result.duplicates) parts.push(`${result.duplicates} already existed`)
   if (result.failed) parts.push(`${result.failed} failed`)
   parts.push('→ review queue')
   return parts.join(' · ')
+}
+
+/** Long / multi-paragraph pastes get an immediate ack before AI extraction. */
+function looksLikeBulkPaste(text: string): boolean {
+  if (text.length >= 500) return true
+  const paragraphs = text.split(/\n{2,}/).filter(p => p.trim().length > 0)
+  return paragraphs.length >= 2
 }
 
 async function handleCommand(cmd: string, rest: string, user: User | null): Promise<string> {
@@ -207,6 +214,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (looksLikeBulkPaste(text)) {
+      await sendMessage(chatId, '⏳ Analyzing your text...')
+    }
     const result = await bulkSave(text, 'telegram', user?.id)
     if (result.total === 0) {
       const fallback = await classifyAndSave(text, 'telegram', { userId: user?.id })
@@ -217,7 +227,8 @@ export async function POST(request: Request) {
     } else {
       await sendMessage(chatId, bulkReply(result))
     }
-  } catch {
+  } catch (err) {
+    console.error('[telegram] plain-text ingest failed:', err)
     await sendMessage(chatId, '⚠️ Could not save. Try again.')
   }
 

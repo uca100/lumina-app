@@ -3,6 +3,14 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.4.1] - 2026-08-15
+
+### Fixed
+- Deploy auto-split plain-text Telegram pastes (was still on 1.3.3 classify-only path — multi-item pastes saved as single Thought blobs with no count ack)
+- `sendMessage` now logs Telegram API errors and retries without Markdown if parse_mode fails (silent reply drops)
+- Long / multi-paragraph plain pastes send “Analyzing…” before extraction, same as `/bulk`
+- Bulk summary reply always includes total item count
+
 ## [1.4.0] - 2026-08-12
 
 ### Added
