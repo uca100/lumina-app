@@ -79,6 +79,10 @@ export default function ItemPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
+    if (from === 'queue') {
+      router.push('/queue')
+      return
+    }
     const updated = await fetch(`/lumina/api/items/${id}`).then((r) => r.json())
     setItem(updated)
     setForm(updated)
@@ -86,11 +90,18 @@ export default function ItemPage() {
     setSaving(false)
   }
 
+  function cancelEdit() {
+    if (from === 'queue') {
+      router.push('/queue')
+      return
+    }
+    setEditing(false)
+  }
+
   async function del() {
-    if (!confirm('Delete this item?')) return
     setDeleting(true)
     await fetch(`/lumina/api/items/${id}`, { method: 'DELETE' })
-    router.push('/')
+    router.push(backHref)
   }
 
   if (!item) return (
@@ -132,7 +143,7 @@ export default function ItemPage() {
                 <button onClick={del} disabled={deleting} className="text-sm px-4 py-1.5 border border-red-200 rounded-full text-red-400 hover:bg-red-50 transition-all">
                   {deleting ? '…' : 'Delete'}
                 </button>
-                <button onClick={() => setEditing(false)} className="text-sm px-4 py-1.5 border border-stone-200 rounded-full text-stone-500 hover:border-stone-300 transition-all">
+                <button onClick={cancelEdit} className="text-sm px-4 py-1.5 border border-stone-200 rounded-full text-stone-500 hover:border-stone-300 transition-all">
                   Cancel
                 </button>
                 <button onClick={save} disabled={saving} className="text-sm px-5 py-1.5 bg-gradient-to-br from-amber-400 to-amber-600 text-white font-bold rounded-full hover:shadow-md hover:shadow-amber-200 disabled:opacity-40 transition-all">

@@ -80,7 +80,6 @@ export default function QueuePage() {
   }
 
   async function deleteItem(id: string) {
-    if (!confirm('Delete this item?')) return
     setActing((a) => ({ ...a, [id]: true }))
     await fetch(`/lumina/api/items/${id}`, { method: 'DELETE' })
     setReviewItems((items) => items.filter((i) => i.id !== id))

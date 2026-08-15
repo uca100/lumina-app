@@ -3,6 +3,12 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.4.2] - 2026-08-15
+
+### Fixed
+- Delete actions no longer show a confirmation dialog (item page, inbox queue, item cards)
+- Editing an item opened from the inbox returns to `/queue` on save or cancel instead of staying on the item page
+
 ## [1.4.1] - 2026-08-15
 
 ### Fixed

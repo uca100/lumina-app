@@ -617,6 +617,7 @@ ${para}` : para;
 async function bulkSave(text2, source, userId) {
   const chunks = chunkText(preprocessText(text2));
   let saved = 0, duplicates = 0, failed = 0;
+  const items2 = [];
   for (const chunk of chunks) {
     let extracted;
     try {
@@ -631,13 +632,19 @@ async function bulkSave(text2, source, userId) {
         const result = savePreclassified(item, source, userId);
         if (result.duplicate) duplicates++;
         else saved++;
+        items2.push({
+          type: item.type,
+          tags: item.tags,
+          title: item.title,
+          duplicate: result.duplicate
+        });
       } catch (err) {
         console.error("[bulkSave] save failed for item:", item.title, err);
         failed++;
       }
     }
   }
-  return { saved, duplicates, failed, total: saved + duplicates + failed };
+  return { saved, duplicates, failed, total: saved + duplicates + failed, items: items2 };
 }
 
 // lib/email/ingest.ts
@@ -719,12 +726,37 @@ var import_drizzle_orm3 = require("drizzle-orm");
 
 // lib/telegram/bot.ts
 var BASE = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
-async function sendMessage(chatId, text2) {
-  await fetch(`${BASE}/sendMessage`, {
+async function postSendMessage(chatId, text2, parseMode) {
+  const body = { chat_id: chatId, text: text2 };
+  if (parseMode) body.parse_mode = parseMode;
+  const res = await fetch(`${BASE}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: text2, parse_mode: "Markdown" })
+    body: JSON.stringify(body)
   });
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = { ok: false, description: `HTTP ${res.status} (non-JSON body)` };
+  }
+  if (!res.ok && data.ok !== false) {
+    data = { ok: false, description: data.description ?? `HTTP ${res.status}`, error_code: data.error_code };
+  }
+  return data;
+}
+async function sendMessage(chatId, text2) {
+  const first = await postSendMessage(chatId, text2, "Markdown");
+  if (first.ok) return;
+  const parseError = /parse|markdown|entities/i.test(first.description ?? "");
+  if (parseError) {
+    console.error("[telegram] sendMessage Markdown failed, retrying plain:", first.description);
+    const retry = await postSendMessage(chatId, text2);
+    if (retry.ok) return;
+    console.error("[telegram] sendMessage plain retry failed:", retry.error_code, retry.description);
+    return;
+  }
+  console.error("[telegram] sendMessage failed:", first.error_code, first.description);
 }
 
 // lib/ntfy/notify.ts

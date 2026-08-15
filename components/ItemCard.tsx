@@ -41,8 +41,6 @@ export function ItemCard({ item, onDeleted, onTagClick }: { item: Item; onDelete
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!confirm('Delete this item?')) return
-    
     const res = await fetch(`/api/items/${item.id}`, { method: 'DELETE' })
     if (res.ok) onDeleted?.(item.id)
   }
