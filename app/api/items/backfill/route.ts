@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { items } from '@/lib/db/schema'
-import { classifyItem } from '@/lib/ai/claude'
+import { classifyItem } from '@/lib/ai/classify'
 import { eq } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { classifyItem } from '@/lib/ai/claude'
+import { classifyItem } from '@/lib/ai/classify'
 
 export async function POST(req: NextRequest) {
   const { body } = await req.json()

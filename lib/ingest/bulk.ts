@@ -1,4 +1,4 @@
-import { bulkExtract } from '../ai/claude'
+import { bulkExtract } from '../ai/classify'
 import { savePreclassified, Source } from './save'
 
 const CHUNK_SIZE = 8000

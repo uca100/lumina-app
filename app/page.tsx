@@ -33,10 +33,21 @@ export default function FeedPage() {
   const [debouncedQ, setDebouncedQ] = useState('')
   const [version, setVersion] = useState('')
   const [tagsExpanded, setTagsExpanded] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/lumina/api/version').then(r => r.json()).then(d => setVersion(`v${d.version}`))
     fetch('/lumina/api/items/tags').then(r => r.json()).then(setAllTags)
+    fetch('/lumina/api/ai/status')
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.ok === false) {
+          setAiError(d.error || 'AI unavailable — check GEMINI_API_KEY')
+        } else {
+          setAiError(null)
+        }
+      })
+      .catch(() => setAiError('AI status check failed'))
   }, [])
 
   useEffect(() => {
@@ -162,6 +173,26 @@ export default function FeedPage() {
       </header>
 
       <main className="relative max-w-3xl mx-auto px-6 py-8">
+
+        {aiError && (
+          <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 flex gap-3 items-start">
+            <span className="text-amber-400 shrink-0 mt-0.5">⚠</span>
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm font-medium text-amber-300">AI unavailable — check GEMINI_API_KEY</p>
+              <p className="text-xs text-amber-200/70 leading-relaxed">{aiError}</p>
+              <p className="text-[11px] text-zinc-500">
+                Create a key at{' '}
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-amber-400 underline underline-offset-2 hover:text-amber-300">
+                  Google AI Studio
+                </a>
+                , set it in <code className="text-zinc-400">/usr/local/lumina/.env.local</code>, then restart Lumina.{' '}
+                <Link href="/integrations" className="text-amber-400 underline underline-offset-2 hover:text-amber-300">
+                  Setup steps →
+                </Link>
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Search + filters */}
         <div className="mb-8 flex flex-col gap-3">

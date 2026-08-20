@@ -3,6 +3,19 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.5.0] - 2026-08-20
+
+### Changed
+- AI provider migrated from Anthropic Claude to Google Gemini (`gemini-3.1-flash-lite`, fallback `gemini-2.5-flash-lite`)
+- Classifier lives in `lib/ai/classify.ts`; env var is now `GEMINI_API_KEY` (Claude key no longer used)
+- Dependency swap: `@google/genai` replaces `@anthropic-ai/sdk`
+
+### Added
+- `GET /api/ai/status` — lightweight Gemini health probe with ~60s server-side cache
+- Home page amber banner when AI is missing/invalid/unavailable
+- Integrations page: Gemini setup card (AI Studio URL + `.env.local` steps)
+- `.env.example` documents `GEMINI_API_KEY`
+
 ## [1.4.3] - 2026-08-20
 
 ### Fixed

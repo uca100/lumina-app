@@ -1,6 +1,6 @@
 import { db } from '../db/client'
 import { items } from '../db/schema'
-import { classifyItem } from '../ai/claude'
+import { classifyItem } from '../ai/classify'
 import { nanoid } from 'nanoid'
 import { eq } from 'drizzle-orm'
 

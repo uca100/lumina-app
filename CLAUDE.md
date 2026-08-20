@@ -12,6 +12,15 @@ Every deployment must include a version number:
 - **In GitHub**: Tag the release (`git tag vX.Y.Z && git push --tags`)
 - **In Notion**: Record the version number in the project's Recent Changes section
 
+## AI (Gemini)
+
+Classification and bulk extract use Google Gemini via `GEMINI_API_KEY`.
+- Create a key: https://aistudio.google.com/apikey
+- Put it in `/usr/local/lumina/.env.local` as `GEMINI_API_KEY=...`
+- Restart: `sudo systemctl restart lumina`
+- Models: `gemini-3.1-flash-lite` (primary), `gemini-2.5-flash-lite` (fallback)
+- Health: `GET /lumina/api/ai/status` (cached ~60s); home page shows an error banner when AI is down
+
 ## Content Model
 
 ### Item Types

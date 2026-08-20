@@ -51,8 +51,8 @@ if [[ ! -f "${INSTALL_DIR}/.env.local" ]]; then
   cat > "${INSTALL_DIR}/.env.local" <<EOF
 NODE_ENV=production
 PORT=3009
-# Anthropic API key (for AI features)
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# Google Gemini API key (for AI classify / bulk) — https://aistudio.google.com/apikey
+GEMINI_API_KEY=your_gemini_api_key_here
 # Notion integration (optional)
 NOTION_API_KEY=your_notion_api_key_here
 EOF

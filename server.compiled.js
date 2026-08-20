@@ -372,9 +372,50 @@ async function runSync() {
 // lib/email/ingest.ts
 var import_imapflow = require("imapflow");
 
-// lib/ai/claude.ts
-var import_sdk = __toESM(require("@anthropic-ai/sdk"));
-var client = new import_sdk.default({ apiKey: process.env.CLAUDE_API_KEY });
+// lib/ai/classify.ts
+var import_genai = require("@google/genai");
+
+// lib/ai/status.ts
+var PRIMARY_MODEL = "gemini-3.1-flash-lite";
+var FALLBACK_MODEL = "gemini-2.5-flash-lite";
+var cache = null;
+function humanizeError(err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+  if (!process.env.GEMINI_API_KEY?.trim()) {
+    return "GEMINI_API_KEY is missing \u2014 add it to /usr/local/lumina/.env.local and restart";
+  }
+  if (lower.includes("api key") || lower.includes("invalid") || lower.includes("401") || lower.includes("403")) {
+    return "GEMINI_API_KEY is invalid or unauthorized \u2014 check Google AI Studio";
+  }
+  if (lower.includes("permission") || lower.includes("disabled") || lower.includes("billing") || lower.includes("organization")) {
+    return "Gemini API access is disabled for this key/org \u2014 check Google AI Studio";
+  }
+  if (lower.includes("quota") || lower.includes("rate") || lower.includes("resource_exhausted")) {
+    return "Gemini quota exceeded \u2014 wait or check free-tier limits";
+  }
+  return msg.slice(0, 200) || "AI unavailable";
+}
+function recordAiSuccess(model) {
+  cache = {
+    ok: true,
+    provider: "gemini",
+    model,
+    error: null,
+    checkedAt: Date.now()
+  };
+}
+function recordAiFailure(err) {
+  cache = {
+    ok: false,
+    provider: "gemini",
+    model: cache?.model ?? null,
+    error: humanizeError(err),
+    checkedAt: Date.now()
+  };
+}
+
+// lib/ai/classify.ts
 var SYSTEM_PROMPT = `You are a content classifier for a personal inspiration app called Lumina.
 When given a piece of text, you will:
 1. Classify it as one of: Quote, Affirmation, Story, Thought, Lesson, Habit, or Advice
@@ -410,16 +451,7 @@ Rules for tags:
 - Do not repeat similar concepts (e.g., pick one of resilience/strength/perseverance)
 - Prefer specific over generic (e.g., "stoicism" over "philosophy" if clearly stoic)
 
-Respond ONLY with valid JSON in this exact shape:
-{
-  "type": "Quote" | "Affirmation" | "Story" | "Thought" | "Lesson" | "Habit" | "Advice",
-  "author": string | null,
-  "tags": string[],
-  "title": string,
-  "summary": string
-}
-
-No markdown, no explanation, only the JSON object.`;
+Respond ONLY with valid JSON matching the schema. No markdown, no explanation.`;
 var TAG_VOCAB = `mindset, growth, resilience, identity, self-belief, confidence, courage, fear, ego, clarity
 gratitude, presence, awareness, acceptance, peace, joy, love, pain, grief, loneliness
 stoicism, philosophy, meaning, purpose, truth, wisdom, perspective, paradox, buddhism
@@ -448,38 +480,112 @@ Tag rules:
 - Never use the author's name as a tag
 - No near-duplicates (pick one of resilience/strength/perseverance)
 
-Respond ONLY with a valid JSON array \u2014 no markdown, no explanation:
-[{"body":"...","type":"...","author":null,"title":"...","tags":[...],"summary":"..."}]
-
+Respond ONLY with a valid JSON array matching the schema \u2014 no markdown, no explanation.
 Minimum item body length: 20 characters. Ignore headings, page numbers, and filler text.
 If the entire input is one item, return an array with one element.`;
-async function bulkExtract(text2) {
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 8192,
-    system: [{ type: "text", text: BULK_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: text2 }]
-  });
-  const raw = response.content[0].type === "text" ? response.content[0].text : "[]";
+var ITEM_TYPES = ["Quote", "Affirmation", "Story", "Thought", "Lesson", "Habit", "Advice"];
+var classifySchema = {
+  type: import_genai.Type.OBJECT,
+  properties: {
+    type: { type: import_genai.Type.STRING, enum: [...ITEM_TYPES] },
+    author: { type: import_genai.Type.STRING, nullable: true },
+    tags: { type: import_genai.Type.ARRAY, items: { type: import_genai.Type.STRING } },
+    title: { type: import_genai.Type.STRING },
+    summary: { type: import_genai.Type.STRING }
+  },
+  required: ["type", "author", "tags", "title", "summary"]
+};
+var bulkSchema = {
+  type: import_genai.Type.ARRAY,
+  items: {
+    type: import_genai.Type.OBJECT,
+    properties: {
+      body: { type: import_genai.Type.STRING },
+      type: { type: import_genai.Type.STRING, enum: [...ITEM_TYPES] },
+      author: { type: import_genai.Type.STRING, nullable: true },
+      tags: { type: import_genai.Type.ARRAY, items: { type: import_genai.Type.STRING } },
+      title: { type: import_genai.Type.STRING },
+      summary: { type: import_genai.Type.STRING }
+    },
+    required: ["body", "type", "author", "tags", "title", "summary"]
+  }
+};
+function getClient() {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is missing");
+  }
+  return new import_genai.GoogleGenAI({ apiKey });
+}
+function parseJsonText(raw) {
+  if (!raw?.trim()) throw new Error("Empty AI response");
   const cleaned = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
   return JSON.parse(cleaned);
 }
+function isModelUnavailable(err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /not found|404|unsupported|does not exist|model/i.test(msg);
+}
+async function generateJson(opts) {
+  const ai = getClient();
+  const models = [PRIMARY_MODEL, FALLBACK_MODEL];
+  let lastErr;
+  for (const model of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: opts.user,
+        config: {
+          systemInstruction: opts.system,
+          responseMimeType: "application/json",
+          responseSchema: opts.schema,
+          maxOutputTokens: opts.maxOutputTokens,
+          temperature: 0.2
+        }
+      });
+      const text2 = response.text;
+      if (!text2?.trim()) throw new Error("Empty AI response");
+      return { text: text2, model };
+    } catch (err) {
+      lastErr = err;
+      if (model === PRIMARY_MODEL && isModelUnavailable(err)) continue;
+      throw err;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Gemini request failed");
+}
+async function bulkExtract(text2) {
+  try {
+    const { text: raw, model } = await generateJson({
+      system: BULK_SYSTEM_PROMPT,
+      user: text2,
+      schema: bulkSchema,
+      maxOutputTokens: 8192
+    });
+    const parsed = parseJsonText(raw);
+    if (!Array.isArray(parsed)) throw new Error("Bulk extract did not return an array");
+    recordAiSuccess(model);
+    return parsed;
+  } catch (err) {
+    recordAiFailure(err);
+    throw err;
+  }
+}
 async function classifyItem(body) {
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 256,
-    system: [
-      {
-        type: "text",
-        text: SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" }
-      }
-    ],
-    messages: [{ role: "user", content: body }]
-  });
-  const raw = response.content[0].type === "text" ? response.content[0].text : "";
-  const text2 = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
-  return JSON.parse(text2);
+  try {
+    const { text: raw, model } = await generateJson({
+      system: SYSTEM_PROMPT,
+      user: body,
+      schema: classifySchema,
+      maxOutputTokens: 512
+    });
+    const parsed = parseJsonText(raw);
+    recordAiSuccess(model);
+    return parsed;
+  } catch (err) {
+    recordAiFailure(err);
+    throw err;
+  }
 }
 
 // lib/ingest/save.ts
@@ -653,7 +759,7 @@ async function checkEmail() {
   const user = process.env.EMAIL_IMAP_USER;
   const pass = process.env.EMAIL_IMAP_PASS;
   if (!host || !user || !pass) return;
-  const client2 = new import_imapflow.ImapFlow({
+  const client = new import_imapflow.ImapFlow({
     host,
     port: Number(process.env.EMAIL_IMAP_PORT ?? 993),
     secure: true,
@@ -662,12 +768,12 @@ async function checkEmail() {
   });
   const trigger = (process.env.EMAIL_TRIGGER ?? "lumina").toLowerCase();
   const label = process.env.EMAIL_LABEL ?? "lumina";
-  await client2.connect();
+  await client.connect();
   try {
-    const lock = await client2.getMailboxLock("INBOX");
+    const lock = await client.getMailboxLock("INBOX");
     try {
       const matched = [];
-      const messages = client2.fetch({ seen: false }, { envelope: true, bodyStructure: true, source: true, uid: true });
+      const messages = client.fetch({ seen: false }, { envelope: true, bodyStructure: true, source: true, uid: true });
       for await (const msg of messages) {
         if (!msg.source || !msg.uid) continue;
         const raw = msg.source.toString();
@@ -687,19 +793,19 @@ ${body}` : body;
         matched.push(msg.uid);
       }
       if (matched.length) {
-        await client2.messageFlagsAdd(matched, ["\\Seen"], { uid: true });
+        await client.messageFlagsAdd(matched, ["\\Seen"], { uid: true });
         try {
-          await client2.mailboxCreate(label);
+          await client.mailboxCreate(label);
         } catch {
         }
-        await client2.messageCopy(matched, label, { uid: true }).catch(() => {
+        await client.messageCopy(matched, label, { uid: true }).catch(() => {
         });
       }
     } finally {
       lock.release();
     }
   } finally {
-    await client2.logout();
+    await client.logout();
   }
 }
 function extractBody(raw) {
@@ -746,17 +852,21 @@ async function postSendMessage(chatId, text2, parseMode) {
   return data;
 }
 async function sendMessage(chatId, text2) {
-  const first = await postSendMessage(chatId, text2, "Markdown");
-  if (first.ok) return;
-  const parseError = /parse|markdown|entities/i.test(first.description ?? "");
-  if (parseError) {
-    console.error("[telegram] sendMessage Markdown failed, retrying plain:", first.description);
-    const retry = await postSendMessage(chatId, text2);
-    if (retry.ok) return;
-    console.error("[telegram] sendMessage plain retry failed:", retry.error_code, retry.description);
-    return;
+  try {
+    const first = await postSendMessage(chatId, text2, "Markdown");
+    if (first.ok) return;
+    const parseError = /parse|markdown|entities/i.test(first.description ?? "");
+    if (parseError) {
+      console.error("[telegram] sendMessage Markdown failed, retrying plain:", first.description);
+      const retry = await postSendMessage(chatId, text2);
+      if (retry.ok) return;
+      console.error("[telegram] sendMessage plain retry failed:", retry.error_code, retry.description);
+      return;
+    }
+    console.error("[telegram] sendMessage failed:", first.error_code, first.description);
+  } catch (err) {
+    console.error("[telegram] sendMessage network/unexpected error:", err);
   }
-  console.error("[telegram] sendMessage failed:", first.error_code, first.description);
 }
 
 // lib/ntfy/notify.ts

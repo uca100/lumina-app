@@ -12,7 +12,7 @@ The `ITEM_TYPES` constant in `lib/types.ts` is the single source of truth for al
 ### Tagging Rules
 - **Buddhist Content**: All content authored by or related to Buddhist teachers (e.g., Ajahn Chah, Ajahn Brahm) MUST be tagged with `buddhism`.
 - **Business/Career**: Items classified as `Advice` related to work or strategy should be tagged with `business`.
-- **Vocabulary**: Always check `lib/ai/claude.ts` for the current tag vocabulary before suggesting new tags in the AI prompts.
+- **Vocabulary**: Always check `lib/ai/classify.ts` for the current tag vocabulary before suggesting new tags in the AI prompts.
 
 ## Development & Deployment
 

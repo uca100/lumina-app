@@ -15,6 +15,13 @@ interface Config {
   version: string
 }
 
+interface AiStatus {
+  ok: boolean
+  provider: string
+  model: string | null
+  error: string | null
+}
+
 function StatusBadge({ active, label }: { active: boolean; label: string }) {
   return (
     <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${active ? 'bg-emerald-900/50 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
@@ -49,12 +56,14 @@ export default function IntegrationsPage() {
   const [copied, setCopied] = useState<string | null>(null)
   const [registering, setRegistering] = useState(false)
   const [regResult, setRegResult] = useState<string | null>(null)
+  const [aiStatus, setAiStatus] = useState<AiStatus | null>(null)
 
   useEffect(() => {
     Promise.all([
       fetch('/lumina/api/config').then(r => r.json()),
       fetch('/lumina/api/auth/me').then(r => r.json()),
-    ]).then(([cfg, me]) => {
+      fetch('/lumina/api/ai/status').then(r => r.json()).catch(() => null),
+    ]).then(([cfg, me, ai]) => {
       if (!cfg.baseUrl) cfg.baseUrl = window.location.origin
       if (me?.ingestApiKey) {
         cfg.ingestKey = me.ingestApiKey
@@ -62,6 +71,7 @@ export default function IntegrationsPage() {
         cfg.telegramChatId = me.telegramChatId ?? null
       }
       setConfig(cfg)
+      if (ai) setAiStatus(ai)
     })
   }, [])
 
@@ -111,6 +121,55 @@ export default function IntegrationsPage() {
         <div>
           <h2 className="text-4xl font-serif font-bold mb-3">Integrations</h2>
           <p className="text-zinc-500">All the ways to get content into Lumina.</p>
+        </div>
+
+        {/* 0. Gemini AI */}
+        <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-8 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-600/80 flex items-center justify-center text-2xl">✦</div>
+              <div>
+                <h3 className="text-xl font-bold">Google Gemini</h3>
+                <p className="text-sm text-zinc-500">Powers classify, Magic Capture, Telegram bulk, and email import.</p>
+              </div>
+            </div>
+            <StatusBadge
+              active={!!aiStatus?.ok}
+              label={aiStatus?.ok ? (aiStatus.model ? `OK · ${aiStatus.model}` : 'Connected') : 'Unavailable'}
+            />
+          </div>
+
+          {aiStatus && !aiStatus.ok && (
+            <p className="text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">
+              {aiStatus.error || 'AI unavailable — check GEMINI_API_KEY'}
+            </p>
+          )}
+
+          <div className="space-y-3 text-xs text-zinc-400 leading-relaxed">
+            <p className="text-[11px] text-zinc-500 uppercase tracking-widest font-bold">Setup</p>
+            <ol className="space-y-2 list-decimal list-inside">
+              <li>
+                Open{' '}
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-amber-400 underline underline-offset-2 hover:text-amber-300">
+                  Google AI Studio → API keys
+                </a>
+              </li>
+              <li>Create an API key (free tier is enough for Lumina).</li>
+              <li>
+                On pi5, set it in <code className="text-zinc-300">/usr/local/lumina/.env.local</code>:
+              </li>
+            </ol>
+            <div className="bg-black rounded-xl border border-zinc-800 p-3 font-mono text-[11px] text-amber-200">
+              GEMINI_API_KEY=your_key_here
+            </div>
+            <p>
+              Then restart: <code className="text-zinc-300">sudo systemctl restart lumina</code>
+            </p>
+            <p className="text-zinc-600">
+              Primary model: <code className="text-zinc-400">gemini-3.1-flash-lite</code>
+              {' '}· fallback: <code className="text-zinc-400">gemini-2.5-flash-lite</code>
+            </p>
+          </div>
         </div>
 
         {/* 1. Telegram */}

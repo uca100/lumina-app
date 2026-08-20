@@ -1,6 +1,6 @@
 {
   "name": "lumina",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "dev": "tsx server.ts",
@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@google/genai": "^2.18.0",
     "@notionhq/client": "^5.19.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.9.0",
