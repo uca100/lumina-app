@@ -35,7 +35,11 @@ function formatItem(item: { title: string | null; body: string; type: string; au
   return `${title}${preview}${author}\n${emoji} _${item.type}_`
 }
 
-function savedReply(result: { type: string; tags: string[]; duplicate?: boolean }): string {
+const PROCESS_FAILED_REPLY =
+  '⚠️ AI unavailable — could not process your text. Try again later.'
+
+function savedReply(result: { type: string; tags: string[]; duplicate?: boolean } | null | undefined): string {
+  if (!result) return PROCESS_FAILED_REPLY
   if (result.duplicate) return '↩ Already in Lumina — skipped'
   const tags = result.tags.length ? `\nTags: ${result.tags.map(t => `\`${t}\``).join(' ')}` : ''
   return `✦ Saved as *${result.type}*${tags}`
@@ -48,6 +52,19 @@ function bulkReply(result: BulkSaveResult): string {
   if (result.failed) parts.push(`${result.failed} failed`)
   parts.push('→ review queue')
   return parts.join(' · ')
+}
+
+/** True when extraction/save failed and nothing landed in items (e.g. Anthropic down). */
+function isCompleteBulkFailure(result: BulkSaveResult): boolean {
+  return result.items.length === 0 && result.failed > 0
+}
+
+async function safeSend(chatId: number, text: string) {
+  try {
+    await sendMessage(chatId, text)
+  } catch (err) {
+    console.error('[telegram] sendMessage threw:', err)
+  }
 }
 
 /** Long / multi-paragraph pastes get an immediate ack before AI extraction. */
@@ -199,37 +216,62 @@ export async function POST(request: Request) {
 
     if (cmd === 'bulk') {
       if (!rest) {
-        await sendMessage(chatId, '⚠️ Usage: `/bulk <text with multiple items>`')
+        await safeSend(chatId, '⚠️ Usage: `/bulk <text with multiple items>`')
       } else {
-        await sendMessage(chatId, '⏳ Analyzing your text...')
-        const result = await bulkSave(rest, 'telegram', user?.id)
-        await sendMessage(chatId, bulkReply(result))
+        try {
+          await safeSend(chatId, '⏳ Analyzing your text...')
+          const result = await bulkSave(rest, 'telegram', user?.id)
+          if (isCompleteBulkFailure(result)) {
+            console.error('[telegram] /bulk failed entirely:', {
+              total: result.total,
+              failed: result.failed,
+              saved: result.saved,
+            })
+            await safeSend(chatId, PROCESS_FAILED_REPLY)
+          } else {
+            await safeSend(chatId, bulkReply(result))
+          }
+        } catch (err) {
+          console.error('[telegram] /bulk ingest failed:', err)
+          await safeSend(chatId, PROCESS_FAILED_REPLY)
+        }
       }
       return NextResponse.json({ ok: true })
     }
 
-    const reply = await handleCommand(cmd, rest, user)
-    await sendMessage(chatId, reply)
+    try {
+      const reply = await handleCommand(cmd, rest, user)
+      await safeSend(chatId, reply)
+    } catch (err) {
+      console.error('[telegram] command ingest failed:', err)
+      await safeSend(chatId, PROCESS_FAILED_REPLY)
+    }
     return NextResponse.json({ ok: true })
   }
 
   try {
     if (looksLikeBulkPaste(text)) {
-      await sendMessage(chatId, '⏳ Analyzing your text...')
+      await safeSend(chatId, '⏳ Analyzing your text...')
     }
     const result = await bulkSave(text, 'telegram', user?.id)
-    if (result.total === 0) {
+    if (isCompleteBulkFailure(result)) {
+      console.error('[telegram] plain-text bulk failed entirely:', {
+        total: result.total,
+        failed: result.failed,
+        saved: result.saved,
+      })
+      await safeSend(chatId, PROCESS_FAILED_REPLY)
+    } else if (result.total === 0) {
       const fallback = await classifyAndSave(text, 'telegram', { userId: user?.id })
-      await sendMessage(chatId, savedReply(fallback))
-    } else if (result.total === 1) {
-      const item = result.items[0]
-      await sendMessage(chatId, savedReply(item))
+      await safeSend(chatId, savedReply(fallback))
+    } else if (result.items.length === 1) {
+      await safeSend(chatId, savedReply(result.items[0]))
     } else {
-      await sendMessage(chatId, bulkReply(result))
+      await safeSend(chatId, bulkReply(result))
     }
   } catch (err) {
     console.error('[telegram] plain-text ingest failed:', err)
-    await sendMessage(chatId, '⚠️ Could not save. Try again.')
+    await safeSend(chatId, PROCESS_FAILED_REPLY)
   }
 
   return NextResponse.json({ ok: true })

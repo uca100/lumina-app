@@ -3,6 +3,12 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.4.3] - 2026-08-20
+
+### Fixed
+- Telegram plain-text / `/bulk` ingest no longer crashes when AI extraction fails entirely (`total === 1` with empty `items` → `savedReply(undefined)` TypeError); users now get a clear “AI unavailable” reply
+- Catch paths for commands and bulk always attempt a Telegram acknowledgement; `sendMessage` never throws on network errors
+
 ## [1.4.2] - 2026-08-15
 
 ### Fixed

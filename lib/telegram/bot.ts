@@ -29,21 +29,25 @@ async function postSendMessage(chatId: number, text: string, parseMode?: 'Markdo
   return data
 }
 
-/** Send a Telegram message. Retries without Markdown if parse_mode fails. Logs API errors. */
-export async function sendMessage(chatId: number, text: string) {
-  const first = await postSendMessage(chatId, text, 'Markdown')
-  if (first.ok) return
+/** Send a Telegram message. Retries without Markdown if parse_mode fails. Logs API errors; never throws. */
+export async function sendMessage(chatId: number, text: string): Promise<void> {
+  try {
+    const first = await postSendMessage(chatId, text, 'Markdown')
+    if (first.ok) return
 
-  const parseError = /parse|markdown|entities/i.test(first.description ?? '')
-  if (parseError) {
-    console.error('[telegram] sendMessage Markdown failed, retrying plain:', first.description)
-    const retry = await postSendMessage(chatId, text)
-    if (retry.ok) return
-    console.error('[telegram] sendMessage plain retry failed:', retry.error_code, retry.description)
-    return
+    const parseError = /parse|markdown|entities/i.test(first.description ?? '')
+    if (parseError) {
+      console.error('[telegram] sendMessage Markdown failed, retrying plain:', first.description)
+      const retry = await postSendMessage(chatId, text)
+      if (retry.ok) return
+      console.error('[telegram] sendMessage plain retry failed:', retry.error_code, retry.description)
+      return
+    }
+
+    console.error('[telegram] sendMessage failed:', first.error_code, first.description)
+  } catch (err) {
+    console.error('[telegram] sendMessage network/unexpected error:', err)
   }
-
-  console.error('[telegram] sendMessage failed:', first.error_code, first.description)
 }
 
 export async function registerWebhook() {
