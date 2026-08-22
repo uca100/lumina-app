@@ -20,6 +20,7 @@ Classification and bulk extract use Google Gemini via `GEMINI_API_KEY`.
 - Restart: `sudo systemctl restart lumina`
 - Models: `gemini-3.1-flash-lite` (primary), `gemini-2.5-flash-lite` (fallback)
 - Health: `GET /lumina/api/ai/status` (cached ~60s); home page shows an error banner when AI is down
+- When unhealthy, alerts NOC Telegram chat (nocbot) via `NOC_TELEGRAM_TOKEN` + `NOC_TELEGRAM_CHAT_ID` (debounced 30m; see `lib/noc/telegram.ts`)
 
 ## Content Model
 

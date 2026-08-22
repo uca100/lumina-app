@@ -3,6 +3,13 @@
 All notable changes to Lumina are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [1.5.1] - 2026-08-22
+
+### Added
+- When Gemini/AI status is unhealthy (`ok: false`), send a Telegram alert to the NOC chat (nocbot) with app, host, and reason
+- Debounce: at most one down-alert per 30 minutes while still down; always alert again on recovery→failure
+- Env: `NOC_TELEGRAM_TOKEN` / `NOC_TELEGRAM_CHAT_ID` (documented in `.env.example`; falls back to `TELEGRAM_TOKEN` / `TELEGRAM_CHAT_ID`)
+
 ## [1.5.0] - 2026-08-20
 
 ### Changed
