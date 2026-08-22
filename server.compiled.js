@@ -376,9 +376,50 @@ var import_imapflow = require("imapflow");
 var import_genai = require("@google/genai");
 
 // lib/ai/status.ts
+var import_os = require("os");
+
+// lib/noc/telegram.ts
+var DEFAULT_NOC_CHAT_ID = "502550514";
+function nocCreds() {
+  const token = process.env.NOC_TELEGRAM_TOKEN?.trim() || process.env.TELEGRAM_TOKEN?.trim() || "";
+  const chatId = process.env.NOC_TELEGRAM_CHAT_ID?.trim() || process.env.TELEGRAM_CHAT_ID?.trim() || DEFAULT_NOC_CHAT_ID;
+  if (!token) return null;
+  return { token, chatId };
+}
+async function notifyNoc(text2) {
+  const creds = nocCreds();
+  if (!creds) {
+    console.warn("[noc] notify skipped \u2014 NOC_TELEGRAM_TOKEN (or TELEGRAM_TOKEN) not set");
+    return false;
+  }
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${creds.token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: creds.chatId,
+        text: text2.slice(0, 3900)
+      })
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error("[noc] sendMessage failed:", res.status, body.slice(0, 200));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[noc] sendMessage network error:", err);
+    return false;
+  }
+}
+
+// lib/ai/status.ts
+var NOC_ALERT_COOLDOWN_MS = 30 * 6e4;
 var PRIMARY_MODEL = "gemini-3.1-flash-lite";
 var FALLBACK_MODEL = "gemini-2.5-flash-lite";
 var cache = null;
+var lastNocAlertAt = 0;
+var lastReportedOk = null;
 function humanizeError(err) {
   const msg = err instanceof Error ? err.message : String(err);
   const lower = msg.toLowerCase();
@@ -396,6 +437,29 @@ function humanizeError(err) {
   }
   return msg.slice(0, 200) || "AI unavailable";
 }
+function hostLabel() {
+  return process.env.HOSTNAME?.trim() || (0, import_os.hostname)() || "unknown";
+}
+function maybeAlertNocAiDown(error) {
+  const now = Date.now();
+  const transitionToDown = lastReportedOk !== false;
+  const cooledDown = now - lastNocAlertAt >= NOC_ALERT_COOLDOWN_MS;
+  if (!transitionToDown && !cooledDown) {
+    lastReportedOk = false;
+    return;
+  }
+  lastReportedOk = false;
+  lastNocAlertAt = now;
+  const msg = `\u{1F6A8} Lumina AI down
+app=Lumina
+host=${hostLabel()}
+provider=gemini
+reason=${error}`;
+  void notifyNoc(msg);
+}
+function markAiOk() {
+  lastReportedOk = true;
+}
 function recordAiSuccess(model) {
   cache = {
     ok: true,
@@ -404,15 +468,18 @@ function recordAiSuccess(model) {
     error: null,
     checkedAt: Date.now()
   };
+  markAiOk();
 }
 function recordAiFailure(err) {
+  const error = humanizeError(err);
   cache = {
     ok: false,
     provider: "gemini",
     model: cache?.model ?? null,
-    error: humanizeError(err),
+    error,
     checkedAt: Date.now()
   };
+  maybeAlertNocAiDown(error);
 }
 
 // lib/ai/classify.ts
